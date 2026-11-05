@@ -1,1 +1,62 @@
+name: Build Stockholm timetable
 
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '35 6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stockholm-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build timetable data
+        env:
+          GTFS_SL_KEY: ${{ secrets.GTFS_SL_KEY }}
+          GTFS_SWEDEN_KEY: ${{ secrets.GTFS_SWEDEN_KEY }}
+        run: python scripts/build.py
+      - name: Check generated dataset
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          folder=pathlib.Path('public/data')
+          manifest=json.loads((folder/'manifest.json').read_text())
+          net=json.loads((folder/'network.json').read_text())
+          assert net['routes'] and net['stops'], 'No routes/stops generated'
+          assert sum(manifest['counts'].values()) > 0, 'No trips generated'
+          print('Dates:',manifest['dates'])
+          print('Operators:',manifest['sources'])
+          print('Daily trip counts:',manifest['counts'])
+          PY
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4
