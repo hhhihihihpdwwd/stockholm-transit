@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build static Stockholm timetable simulation. No secrets leave GitHub Actions."""
-import csv, datetime as dt, io, json, os, re, sys, urllib.request, zipfile, collections, math, pathlib, time
+import csv, datetime as dt, io, json, os, re, sys, urllib.request, urllib.parse, urllib.error, zipfile, collections, math, pathlib, time, gzip, zlib
 from zoneinfo import ZoneInfo
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
@@ -16,13 +16,27 @@ FEEDS=[]
 
 def fetch_feed(name,key,url):
     if not key: print(f'SKIP {name}: no key'); return None
-    url=url+'?key='+key
-    req=urllib.request.Request(url,headers={'User-Agent':'StockholmTransitObservatory/1.0 (+timetable-simulator)'})
+    url=url+'?'+urllib.parse.urlencode({'key':key})
+    req=urllib.request.Request(url,headers={
+        'User-Agent':'StockholmTransitObservatory/1.1 (+timetable-simulator)',
+        'Accept':'application/zip, application/octet-stream, */*',
+        'Accept-Encoding':'gzip, deflate',
+    })
     for attempt in range(3):
         try:
             print('Downloading',name,flush=True)
             with urllib.request.urlopen(req,timeout=180) as resp:
                 data=resp.read()
+                encoding=resp.headers.get('Content-Encoding','').lower().strip()
+            if encoding == 'gzip':
+                data=gzip.decompress(data)
+            elif encoding == 'deflate':
+                try: data=zlib.decompress(data)
+                except zlib.error: data=zlib.decompress(data,-zlib.MAX_WBITS)
+            elif encoding not in ('', 'identity'):
+                raise ValueError('Unsupported response encoding: '+encoding)
+            if not zipfile.is_zipfile(io.BytesIO(data)):
+                raise ValueError('Feed response is not a ZIP file')
             print('Read',name,len(data)//1024//1024,'MiB',flush=True)
             return zipfile.ZipFile(io.BytesIO(data))
         except Exception as exc:
