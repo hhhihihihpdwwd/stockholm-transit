@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build V7 offline historical timetable simulation, once, without Trafiklab keys.
+"""Build V8 Stockholm-focused offline historical timetable simulation, once.
 Real archive services are preserved. Optional added pattern-based synthetic services
 are explicitly labelled SIMULATED in the published trip data. Street and rail
 geometry is sourced only from connected OpenStreetMap ways; never fabricated.
@@ -237,7 +237,7 @@ def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, 
             continue
         dates = [d for d in DAYS if r.get('service_id') in services[d]]
         if dates:
-            trips[ident] = (routes[rid], r.get('trip_headsign', ''), r.get('shape_id', ''), dates, route_modes[rid])
+            trips[ident] = (routes[rid], r.get('trip_headsign', ''), r.get('shape_id', ''), dates, route_modes[rid], (r.get('trip_short_name') or '').strip())
     print('Trips with active service', len(trips), flush=True)
 
     stop_times = collections.defaultdict(list)
@@ -287,7 +287,7 @@ def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, 
     # Build per-mode shape map using a wider bbox for rail.
     shape_map = {}
     mode_for_shape = {}
-    for tid, (_, _, sid, _, mode) in relevant.items():
+    for tid, (_, _, sid, _, mode, train_no) in relevant.items():
         if sid and sid not in mode_for_shape:
             mode_for_shape[sid] = mode
     for sid, pts in raw_shapes.items():
@@ -316,7 +316,7 @@ def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, 
         shape_map[sid] = global_shapes[coords]
 
     added = 0
-    for tid, (route, head, shape, dates, mode) in relevant.items():
+    for tid, (route, head, shape, dates, mode, train_no) in relevant.items():
         sts = sorted(stop_times[tid], key=lambda row: row[0])
         clean = []
         for _, stop, a, b in sts:
@@ -334,7 +334,7 @@ def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, 
         # reindexed multiple times during network compaction (KeyError).
         for d in dates:
             per_day[d].append([route, head, shape_map.get(shape, -1),
-                               [stop.copy() for stop in clean]])
+                               [stop.copy() for stop in clean], '', train_no])
             added += 1
     print('Completed', label, 'items added', added, flush=True)
     # O(trips) diagnostics (avoid scanning all route definitions for each trip).
@@ -428,23 +428,50 @@ def main():
         print('No archived timetable processed.',file=sys.stderr)
         return 2
 
+    # Focus V8 on every Stockholm transit service and intercity services that
+    # actually touch the Stockholm area, rather than loading all Swedish rail.
+    mode_by_route={idx:mode for (_,_,_,mode,_),idx in global_routes.items()}
+    stop_by_id={idx:(lat,lon) for (lat,lon,_),idx in global_stops.items()}
+    centre=(59.33,18.06)
+    from osm_routes import hav
+    rail_seen=rail_kept=0
+    for d, items in per_day.items():
+        retained=[]
+        for item in items:
+            if mode_by_route[item[0]]=='rail':
+                rail_seen+=1
+                # Keep the *entire* journey to its far-away destination if it
+                # visits any station in the greater Stockholm area.
+                if not any(hav(stop_by_id[st[0]],centre)<=33000 for st in item[3]):
+                    continue
+                rail_kept+=1
+            retained.append(item)
+        per_day[d]=retained
+    print('STOCKHOLM FILTER: retained intercity rail',rail_kept,'/',rail_seen,'dated trips',flush=True)
     fill_simulation_gaps(per_day,global_routes)
-    # One-time OSM-connected geometry computation. The public Overpass service
-    # can be busy; log coverage instead of silently fabricating centerlines.
-    tunnel_shapes={}
-    try:
-        from osm_routes import enrich as enrich_osm
-        tunnel_shapes=enrich_osm(global_routes,global_stops,global_shapes,per_day)
-    except Exception as exc:
-        print('OSM street/rail import unavailable:',str(exc)[:180],flush=True)
 
-    # Add track-following geometry for missing Stockholm–Arlanda rail shapes.
-    # The OSM fetch is optional; it never invents a direct station-to-station line.
-    try:
-        from rail_osm import enrich_arlanda_shapes
-        enrich_arlanda_shapes(global_routes,global_stops,global_shapes,per_day)
-    except Exception as exc:
-        print('Optional OSM rail geometry unavailable:',str(exc)[:200],flush=True)
+    # One Stockholm PBF extract, streamed to disk, parsed locally. This avoids
+    # public Overpass request timeouts seen in V7.
+    from osm_extract import enrich as enrich_pbf
+    tunnel_shapes=enrich_pbf(global_routes,global_stops,global_shapes,per_day)
+
+    # Long-distance trains often lack GTFS shapes, and the Stockholm extract
+    # cannot contain their distant track network. For those trains ONLY, create
+    # an explicitly ESTIMATED corridor through their real scheduled stations.
+    # Never use this for buses, metro, trams or commuter/local trains.
+    approx_count=0
+    for d, trips in per_day.items():
+        for item in trips:
+            if item[2]>=0 or mode_by_route[item[0]]!='rail':continue
+            stations=[stop_by_id[row[0]] for row in item[3]]
+            if len(stations)<2:continue
+            if not any(hav(loc,centre)>33000 for loc in stations):continue
+            geometry=tuple((round(lat,5),round(lon,5)) for lat,lon in stations)
+            if len(set(geometry))<2:continue
+            item[2]=global_shapes.setdefault(geometry,len(global_shapes))
+            if len(item)<7:item.append('estimated-corridor')
+            approx_count+=1
+    print('ESTIMATED DISTANT RAIL CORRIDORS (not exact track geometry):',approx_count,flush=True)
 
     routes = [None] * len(global_routes)
     for (agency, short, long, mode, color), i in global_routes.items():
@@ -502,7 +529,7 @@ def main():
         'stockholm_bounds': STOCKHOLM_BBOX,
         'national_bounds': NATIONAL_BBOX,
         'excluded_modes': sorted(SKIP_MODES),
-        'mode': 'historical-weekday-repeat', 'synthetic_supplements': True, 'osm_connected_geometry': True,
+        'mode': 'historical-weekday-repeat', 'synthetic_supplements': True, 'osm_connected_geometry': True, 'stockholm_only_local': True,
         'snapshot': '2026-11-04',
         'historical': True,
     }

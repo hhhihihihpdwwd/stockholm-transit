@@ -98,7 +98,7 @@ class Graph:
         # Several railway tracks at a station; keep alternatives in case nearest disconnected.
         if not found:return []
         baseline=found[0][0]
-        return [(d,n) for d,n in found[:10] if d<baseline+120]
+        return [(d,n) for d,n in found[:10] if d<baseline+35]
     def route(self, p, q, mode):
         direct=hav(p,q)
         if direct<65:return None
@@ -107,22 +107,26 @@ class Graph:
         ends=self.nearby(q,max_snap)
         if not starts or not ends:return None
         targets={nid:d for d,nid in ends}
+        # A* with a geographic lower bound, instead of Dijkstra's broad
+        # exploration of the entire Stockholm road network for every stop pair.
         heap=[];costs={};prev={};tunnel={}
+        target_coord=q
         for dist,nid in starts:
-            costs[nid]=dist;heapq.heappush(heap,(dist,nid))
+            costs[nid]=dist
+            heapq.heappush(heap,(dist+hav(self.points[nid],target_coord),dist,nid))
         maxlen=max(1500,direct*(3.5 if mode=='bus' else 2.4)+900)
         destination=None
         while heap:
-            cost,node=heapq.heappop(heap)
+            _,cost,node=heapq.heappop(heap)
             if cost!=costs.get(node):continue
-            if cost>maxlen:break
+            if cost>maxlen:continue
             if node in targets:
                 destination=node;break
             for nxt,edge,under in self.edges.get(node,()):
                 alt=cost+edge
-                if alt<costs.get(nxt,math.inf):
+                if alt<costs.get(nxt,math.inf) and alt<=maxlen:
                     costs[nxt]=alt;prev[nxt]=node;tunnel[nxt]=under
-                    heapq.heappush(heap,(alt,nxt))
+                    heapq.heappush(heap,(alt+hav(self.points[nxt],target_coord),alt,nxt))
         if destination is None:return None
         ids=[];node=destination
         while node in prev:
