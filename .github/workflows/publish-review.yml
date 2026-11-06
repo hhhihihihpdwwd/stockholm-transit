@@ -1,0 +1,101 @@
+name: Publish route review only (reuse V8 site)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: stockholm-pages
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout route-review.html
+        uses: actions/checkout@v4
+      - name: Restore last published V8 website and add review page
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import io, json, os, pathlib, shutil, tarfile, urllib.request, zipfile
+
+          repository = os.environ['GITHUB_REPOSITORY']
+          token = os.environ['GH_TOKEN']
+          headers = {
+              'Authorization': 'Bearer ' + token,
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'User-Agent': 'Stockholm-Transit-route-review',
+          }
+          api = 'https://api.github.com/repos/' + repository + '/actions/artifacts?name=github-pages&per_page=100'
+          with urllib.request.urlopen(urllib.request.Request(api, headers=headers), timeout=40) as response:
+              artifacts = json.load(response)['artifacts']
+          candidates = sorted((a for a in artifacts if a['name'] == 'github-pages' and not a['expired']),
+                              key=lambda a: a['created_at'], reverse=True)
+          if not candidates:
+              raise SystemExit('No unexpired github-pages artifact found. The original data build is required only if the published artifact has expired.')
+          artifact = candidates[0]
+          print('Reusing existing pages artifact ID:', artifact['id'], 'created:', artifact['created_at'])
+
+          request = urllib.request.Request(artifact['archive_download_url'], headers=headers)
+          with urllib.request.urlopen(request, timeout=60) as response, open('/tmp/stockholm_pages.zip', 'wb') as output:
+              shutil.copyfileobj(response, output)
+
+          site = pathlib.Path('_site')
+          site.mkdir(exist_ok=True)
+          with zipfile.ZipFile('/tmp/stockholm_pages.zip') as package:
+              tar_names = [n for n in package.namelist() if n.endswith('.tar') or n.endswith('.tar.gz')]
+              if not tar_names:
+                  raise SystemExit('Pages artifact missing the expected website tar archive')
+              with package.open(tar_names[0]) as tar_bytes:
+                  with tarfile.open(fileobj=tar_bytes, mode='r|*') as tar:
+                      total = 0
+                      for member in tar:
+                          if not member.isfile():
+                              continue
+                          destination = (site / member.name).resolve()
+                          if not destination.is_relative_to(site.resolve()):
+                              raise SystemExit('Unsafe path in original Pages artifact')
+                          total += member.size
+                          if total > 1_500_000_000:
+                              raise SystemExit('Unexpectedly large Pages artifact')
+                          destination.parent.mkdir(parents=True, exist_ok=True)
+                          with tar.extractfile(member) as source, destination.open('wb') as output:
+                              shutil.copyfileobj(source, output)
+
+          for required in ('index.html', 'data/manifest.json', 'data/network.json'):
+              if not (site / required).is_file():
+                  raise SystemExit('Original site is incomplete; refusing to overwrite the live website: ' + required)
+          review = pathlib.Path('public/routes-review.html')
+          if not review.is_file():
+              raise SystemExit('Upload public/routes-review.html first')
+          shutil.copy2(review, site / 'routes-review.html')
+          manifest = json.loads((site / 'data/manifest.json').read_text())
+          if not any((site / ('data/' + date + '.json')).exists() for date in manifest.get('dates', [])):
+              raise SystemExit('No daily timetable JSON files found; refusing to deploy')
+          print('SUCCESS: Existing V8 site restored, route review added, datasets preserved.')
+          PY
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload unchanged V8 plus route review
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy updated site without rebuilding timetable
+        id: deployment
+        uses: actions/deploy-pages@v4
