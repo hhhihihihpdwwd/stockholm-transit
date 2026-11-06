@@ -1,9 +1,7 @@
-name: Build Stockholm timetable
+name: Publish Stockholm offline timetable (one time)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '35 6 * * *'
 
 permissions:
   contents: read
@@ -15,7 +13,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,25 +21,34 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Build timetable data
+      - name: Generate one-time archive timetable (no Trafiklab keys)
         env:
-          GTFS_SL_KEY: ${{ secrets.GTFS_SL_KEY }}
-          GTFS_SWEDEN_KEY: ${{ secrets.GTFS_SWEDEN_KEY }}
+          GTFS_ARCHIVE_URL: https://data.samtrafiken.se/trafiklab/gtfs-sverige-2/2026/11/sweden-20261104.zip
+          PHOTO_DOWNLOAD: '0'
+          OSM_RAIL_FALLBACK: '0'
         run: python scripts/build.py
-      - name: Check generated dataset
+      - name: Validate the offline dataset before publishing
         run: |
           python - <<'PY'
-          import json, pathlib
-          folder=pathlib.Path('public/data')
-          manifest=json.loads((folder/'manifest.json').read_text())
-          net=json.loads((folder/'network.json').read_text())
-          assert net['routes'] and net['stops'], 'No routes/stops generated'
-          assert sum(manifest['counts'].values()) > 0, 'No trips generated'
-          print('Dates:',manifest['dates'])
-          print('Operators:',manifest['sources'])
-          print('Daily trip counts:',manifest['counts'])
+          import json,collections,pathlib,sys
+          root=pathlib.Path('public/data')
+          m=json.loads((root/'manifest.json').read_text())
+          n=json.loads((root/'network.json').read_text())
+          assert m.get('weekly_repeat') and len(m['dates'])==7, 'Missing representative weekly schedule'
+          assert n['routes'] and n['stops'], 'Empty network'
+          counts=collections.Counter()
+          for day in m['dates']:
+              trips=json.loads((root/(day+'.json')).read_text())['trips']
+              for t in trips: counts[n['routes'][t[0]][2]]+=1
+          print('ARCHIVE MODES ACROSS WEEK:',dict(counts),flush=True)
+          important=('metro','commuter','bus','rail')
+          missing=[x for x in important if counts[x]==0]
+          if missing:
+              print('STOP: Missing essential modes from snapshot:',missing,file=sys.stderr)
+              raise SystemExit(2)
+          print('Validated historical weekly simulation. No daily API download is configured.')
           PY
-      - name: Configure GitHub Pages
+      - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
@@ -57,6 +64,6 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - name: Publish website
+      - name: Publish archived simulation
         id: deployment
         uses: actions/deploy-pages@v4
