@@ -7,7 +7,7 @@ V4 goals:
 - expand long-distance rail coverage across Sweden / south to Copenhagen corridor
 - preserve shapes for rail so trains like Arlanda Express follow actual track geometry more often
 """
-import csv, datetime as dt, io, json, os, re, sys, urllib.request, zipfile, collections, math, pathlib, time
+import csv, datetime as dt, io, json, os, re, sys, urllib.request, urllib.parse, zipfile, collections, math, pathlib, time, gzip, zlib
 from zoneinfo import ZoneInfo
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -29,20 +29,35 @@ def fetch_feed(name, key, url):
     if not key:
         print(f'SKIP {name}: no key')
         return None
-    req = urllib.request.Request(
-        url + '?key=' + key,
-        headers={'User-Agent': 'StockholmTransitObservatory/2.0 (+timetable-simulator)'},
-    )
+    # Important: Trafiklab / Samtrafiken can return HTTP 406 unless compression
+    # support is explicitly advertised. Retain this fix in future versions.
+    endpoint = url + '?' + urllib.parse.urlencode({'key': key})
+    req = urllib.request.Request(endpoint, headers={
+        'User-Agent': 'StockholmTransitObservatory/2.1 (+timetable-simulator)',
+        'Accept': 'application/zip, application/octet-stream, */*',
+        'Accept-Encoding': 'gzip, deflate',
+    })
     for attempt in range(3):
         try:
             print('Downloading', name, flush=True)
             with urllib.request.urlopen(req, timeout=240) as resp:
                 data = resp.read()
+                encoding = resp.headers.get('Content-Encoding', '').lower().strip()
+            if encoding == 'gzip':
+                data = gzip.decompress(data)
+            elif encoding == 'deflate':
+                try:
+                    data = zlib.decompress(data)
+                except zlib.error:
+                    data = zlib.decompress(data, -zlib.MAX_WBITS)
+            elif encoding not in ('', 'identity'):
+                raise ValueError('Unsupported response encoding: ' + encoding)
+            if not zipfile.is_zipfile(io.BytesIO(data)):
+                raise ValueError('Feed response is not a ZIP file')
             print('Read', name, len(data) // 1024 // 1024, 'MiB', flush=True)
             return zipfile.ZipFile(io.BytesIO(data))
         except Exception as exc:
-            msg = str(exc).replace(key, '[REDACTED]')[:260]
-            print('Feed failure:', name, type(exc).__name__, msg, flush=True)
+            print('Feed failure:', name, type(exc).__name__, str(exc).replace(key, '[REDACTED]')[:260], flush=True)
             time.sleep(attempt * 2 + 1)
     return None
 
