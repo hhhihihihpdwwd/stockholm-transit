@@ -143,7 +143,7 @@ class Graph:
         if direct<15:return None
         cache_key=(round(p[0],6),round(p[1],6),round(q[0],6),round(q[1],6),mode)
         if cache_key in self._path_cache:return self._path_cache[cache_key]
-        max_snap=300 if mode=='bus' else (1000 if mode=='ferry' else 400)
+        max_snap=580 if mode=='bus' else (1000 if mode=='ferry' else 740)
         starts=self.nearby(p,max_snap)
         ends=self.nearby(q,max_snap)
         if not starts or not ends:return None
@@ -162,7 +162,7 @@ class Graph:
         # A* where both station-to-rail offsets are part of the cost.
         # A finite detour allowance protects against accidentally routing
         # via a disconnected remote corridor or around a wrong bay.
-        maxlen=max(2000,direct*(4.2 if mode=='bus' else 3.6)+1500)
+        maxlen=max(2000,direct*(5.5 if mode=='bus' else 4.4)+2000)
         heap=[];costs={};prev={};tunnel={}
         for d,n in starts:
             if d<costs.get(n,math.inf):
