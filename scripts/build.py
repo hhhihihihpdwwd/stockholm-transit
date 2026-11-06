@@ -21,7 +21,7 @@ STOCKHOLM_BBOX = (58.95, 59.82, 17.35, 19.10)  # south, north, west, east
 NATIONAL_BBOX = (54.80, 69.60, 10.00, 24.80)
 DAY0 = dt.datetime.now(ZoneInfo('Europe/Stockholm')).date()
 DAYS = [DAY0 - dt.timedelta(days=1), DAY0, DAY0 + dt.timedelta(days=1)]
-SKIP_MODES = {'bus', 'other'}
+SKIP_MODES = {'other'}
 LOCAL_ONLY_MODES = {'metro', 'tram', 'commuter', 'localrail', 'ferry'}
 
 
@@ -119,7 +119,7 @@ def route_mode(r, agency):
 
     if t in (0, 900, 901, 902, 903, 904, 905, 906):
         return 'tram'
-    if t in (1, 400, 401, 402):
+    if t == 1 or 400 <= t < 500 or 'tunnelbana' in info or 't-bana' in info:
         return 'metro'
     if t in (4, 1000, 1001, 1002):
         return 'ferry'
@@ -166,6 +166,10 @@ def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, 
     for r in records(z, 'routes.txt'):
         agency = agencies.get(r.get('agency_id', ''), default_agency)
         mode = route_mode(r, agency)
+        # SL provides local Stockholm services. Sweden 3 is used ONLY to add
+        # nationwide rail so its overlapping SL trips do not duplicate.
+        if label == 'Sweden 3' and mode != 'rail':
+            continue
         if mode in SKIP_MODES:
             continue
         short = (r.get('route_short_name', '') or '').strip()
@@ -174,6 +178,7 @@ def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, 
         if not re.fullmatch(r'[a-fA-F0-9]{6}', color or ''):
             color = {
                 'metro': '1976D2',
+                'bus': '347CC2',
                 'commuter': 'E55397',
                 'tram': '28A6BA',
                 'localrail': '7964C7',
@@ -320,6 +325,10 @@ def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, 
             per_day[d].append(item)
             added += 1
     print('Completed', label, 'items added', added, flush=True)
+    # O(trips) diagnostics (avoid scanning all route definitions for each trip).
+    route_mode_by_idx = {idx: mode_name for (_, _, _, mode_name, _), idx in global_routes.items()}
+    counts = collections.Counter(route_mode_by_idx[item[0]] for item in per_day[DAY0])
+    print('MODE DIAGNOSTIC', label, dict(counts), flush=True)
 
 
 def main():
@@ -353,6 +362,14 @@ def main():
         print('No datasets downloaded. Need GTFS_SL_KEY at minimum.', file=sys.stderr)
         return 2
 
+    # Add track-following geometry for missing Stockholm–Arlanda rail shapes.
+    # The OSM fetch is optional; it never invents a direct station-to-station line.
+    try:
+        from rail_osm import enrich_arlanda_shapes
+        enrich_arlanda_shapes(global_routes,global_stops,global_shapes,per_day)
+    except Exception as exc:
+        print('Optional OSM rail geometry unavailable:',str(exc)[:200],flush=True)
+
     routes = [None] * len(global_routes)
     for (agency, short, long, mode, color), i in global_routes.items():
         routes[i] = [short or long[:20], long, mode, color, agency]
@@ -365,6 +382,28 @@ def main():
     for coords, i in global_shapes.items():
         shapes[i] = coords
 
+    # Compact the published network to the 3 days actually displayed. Sweden 3
+    # contains many inactive routes/stops; never ship those unused tables to a phone.
+    used_routes = set()
+    used_stops = set()
+    used_shapes = set()
+    for trips in per_day.values():
+        for item in trips:
+            used_routes.add(item[0]);used_stops.update(st[0] for st in item[3])
+            if item[2] >= 0:used_shapes.add(item[2])
+    route_ids={old:i for i,old in enumerate(sorted(used_routes))}
+    stop_ids={old:i for i,old in enumerate(sorted(used_stops))}
+    shape_ids={old:i for i,old in enumerate(sorted(used_shapes))}
+    routes=[routes[old] for old in sorted(used_routes)]
+    stops=[stops[old] for old in sorted(used_stops)]
+    shapes=[shapes[old] for old in sorted(used_shapes)]
+    for trips in per_day.values():
+        for item in trips:
+            item[0]=route_ids[item[0]]
+            item[2]=shape_ids.get(item[2],-1)
+            for st in item[3]:st[0]=stop_ids[st[0]]
+    print('PUBLISHED NETWORK:',len(routes),'routes,',len(stops),'stops,',len(shapes),'shapes',flush=True)
+
     meta = {
         'source': used,
         'generated': dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -372,6 +411,7 @@ def main():
         'stockholm_bounds': STOCKHOLM_BBOX,
         'national_bounds': NATIONAL_BBOX,
         'excluded_modes': sorted(SKIP_MODES),
+        'mode': 'schedule-only',
     }
     net = {'meta': meta, 'routes': routes, 'stops': stops, 'shapes': shapes}
     (OUT / 'network.json').write_text(json.dumps(net, ensure_ascii=False, separators=(',', ':')))
@@ -383,6 +423,19 @@ def main():
         'sources': used,
         'counts': {str(d): len(per_day[d]) for d in DAYS},
     }, ensure_ascii=False, separators=(',', ':')))
+    mode_counts = collections.Counter()
+    for item in per_day[DAY0]:
+        mode_counts[routes[item[0]][2]] += 1
+    print('TODAY TRIPS BY MODE:',dict(mode_counts),flush=True)
+    if 'SL' in used and (not mode_counts.get('metro') or not mode_counts.get('commuter')):
+        print('WARNING: SL metro/commuter missing in GTFS. Check route_type, service dates and route metadata.',flush=True)
+    # Photo downloads happen once per GitHub build, not at page load.
+    if os.environ.get('PHOTO_DOWNLOAD', '1') != '0':
+        try:
+            from fetch_photos import generate as generate_photos
+            generate_photos()
+        except Exception as exc:
+            print('Photo library fallback:', str(exc)[:140], flush=True)
     for f in OUT.iterdir():
         print(f.name, round(f.stat().st_size / 1024 / 1024, 2), 'MB')
     return 0
