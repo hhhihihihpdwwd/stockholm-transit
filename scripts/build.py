@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-"""Build static Stockholm/Sweden transit timetable simulation.
-
-V4 goals:
-- smoother frontend by excluding buses for now
-- keep Stockholm local systems (metro/tram/commuter/localrail/ferry)
-- expand long-distance rail coverage across Sweden / south to Copenhagen corridor
-- preserve shapes for rail so trains like Arlanda Express follow actual track geometry more often
+"""Build V7 offline historical timetable simulation, once, without Trafiklab keys.
+Real archive services are preserved. Optional added pattern-based synthetic services
+are explicitly labelled SIMULATED in the published trip data. Street and rail
+geometry is sourced only from connected OpenStreetMap ways; never fabricated.
 """
 import csv, datetime as dt, io, json, os, re, sys, urllib.request, urllib.parse, urllib.error, zipfile, collections, math, pathlib, time, gzip, zlib
 from zoneinfo import ZoneInfo
@@ -346,6 +343,57 @@ def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, 
     print('MODE DIAGNOSTIC', label, dict(counts), flush=True)
 
 
+def fill_simulation_gaps(per_day, global_routes):
+    """Add MODELLed frequency trips from archived route patterns.
+
+    Does not create invented stops or routes. Adds only scheduled departure
+    variants on fully known stop patterns. Modelled trips are labelled in JSON.
+    Useful when historical service calendar is sparse; not realtime data.
+    """
+    mode_by_idx = {idx:mode for (_,_,_,mode,_),idx in global_routes.items()}
+    headway = {'metro':360, 'commuter':900, 'tram':720, 'localrail':1100,
+               'bus':1100, 'ferry':1800}
+    maximum = {'metro':1900, 'commuter':850, 'tram':450, 'localrail':300,
+               'bus':2200, 'ferry':180}
+    for day, trips in per_day.items():
+        groups = collections.defaultdict(list)
+        for item in trips:
+            if mode_by_idx[item[0]] not in headway or len(item[3])<2:continue
+            key=(item[0], item[3][0][0], item[3][-1][0], tuple(row[0] for row in item[3]))
+            groups[key].append(item)
+        # Pick a real observed full journey for each line & direction; individual
+        # variants of the same route are limited to keep network size bounded.
+        candidates=[]
+        for key, observed in groups.items():
+            m=mode_by_idx[key[0]]
+            fastest=max(observed,key=lambda x:(len(x[3]),x[3][-1][1]-x[3][0][1]))
+            travel=fastest[3][-1][1]-fastest[3][0][1]
+            if 120 <= travel <= 5*3600:
+                candidates.append((m,key,fastest,observed))
+        candidates.sort(key=lambda x: (-len(x[3]),x[1]))
+        seen_mode=collections.Counter()
+        new_items=[]
+        for mode,key,base,observed in candidates:
+            if seen_mode[mode]>=maximum[mode]:continue
+            # Do not duplicate observed departures within half a headway.
+            existing=sorted(x[3][0][1] for x in observed)
+            period=headway[mode]
+            base_depart=base[3][0][1]
+            offsets=[(st[0],st[1]-base_depart,st[2]-base_depart) for st in base[3]]
+            if any(arr<0 or dep<arr for _,arr,dep in offsets):continue
+            for depart in range(5*3600,24*3600+21*60,period):
+                if seen_mode[mode]>=maximum[mode]:break
+                if any(abs(depart-t)<period*.72 for t in existing):continue
+                # Every new trip is a clearly marked synthetic timetable estimate.
+                stops=[[sid,depart+arr,depart+dep] for sid,arr,dep in offsets]
+                if stops[-1][1]>28*3600:continue
+                new_items.append([base[0],base[1],base[2],stops,'modelled'])
+                seen_mode[mode]+=1
+        trips.extend(new_items)
+        print('SIMULATED HEADWAY SUPPLEMENTS',str(day),dict(seen_mode),flush=True)
+    return per_day
+
+
 def main():
     # Offline snapshot: one historical national archive, NO API key / quota.
     url = os.environ.get('GTFS_ARCHIVE_URL',
@@ -379,6 +427,16 @@ def main():
     if not used:
         print('No archived timetable processed.',file=sys.stderr)
         return 2
+
+    fill_simulation_gaps(per_day,global_routes)
+    # One-time OSM-connected geometry computation. The public Overpass service
+    # can be busy; log coverage instead of silently fabricating centerlines.
+    tunnel_shapes={}
+    try:
+        from osm_routes import enrich as enrich_osm
+        tunnel_shapes=enrich_osm(global_routes,global_stops,global_shapes,per_day)
+    except Exception as exc:
+        print('OSM street/rail import unavailable:',str(exc)[:180],flush=True)
 
     # Add track-following geometry for missing Stockholm–Arlanda rail shapes.
     # The OSM fetch is optional; it never invents a direct station-to-station line.
@@ -415,6 +473,7 @@ def main():
     routes=[routes[old] for old in sorted(used_routes)]
     stops=[stops[old] for old in sorted(used_stops)]
     shapes=[shapes[old] for old in sorted(used_shapes)]
+    compact_tunnels={shape_ids[old]:flags for old,flags in tunnel_shapes.items() if old in shape_ids}
     # Defensive identity de-duplication: even if optional route enrichment
     # shared an object across days, transform each actual object only once.
     reindexed_items = set()
@@ -429,6 +488,12 @@ def main():
             for stop in item[3]:
                 stop[0] = stop_ids[stop[0]]
     print('PUBLISHED NETWORK:',len(routes),'routes,',len(stops),'stops,',len(shapes),'shapes',flush=True)
+    geo_counts=collections.Counter();all_counts=collections.Counter()
+    for trips in per_day.values():
+        for item in trips:
+            mode=routes[item[0]][2];all_counts[mode]+=1
+            if item[2]>=0:geo_counts[mode]+=1
+    print('REAL ROAD/RAIL GEOMETRY COVERAGE:',{k:f'{geo_counts[k]}/{v} ({geo_counts[k]/v:.1%})' for k,v in all_counts.items()},flush=True)
 
     meta = {
         'source': used,
@@ -437,11 +502,11 @@ def main():
         'stockholm_bounds': STOCKHOLM_BBOX,
         'national_bounds': NATIONAL_BBOX,
         'excluded_modes': sorted(SKIP_MODES),
-        'mode': 'historical-weekday-repeat',
+        'mode': 'historical-weekday-repeat', 'synthetic_supplements': True, 'osm_connected_geometry': True,
         'snapshot': '2026-11-04',
         'historical': True,
     }
-    net = {'meta': meta, 'routes': routes, 'stops': stops, 'shapes': shapes}
+    net = {'meta': meta, 'routes': routes, 'stops': stops, 'shapes': shapes, 'tunnels': compact_tunnels}
     (OUT / 'network.json').write_text(json.dumps(net, ensure_ascii=False, separators=(',', ':')))
     for d, items in per_day.items():
         (OUT / (d.isoformat() + '.json')).write_text(json.dumps({'date': d.isoformat(), 'trips': items}, ensure_ascii=False, separators=(',', ':')))
