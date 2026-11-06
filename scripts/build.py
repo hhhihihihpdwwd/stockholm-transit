@@ -19,8 +19,9 @@ OUT.mkdir(exist_ok=True, parents=True)
 STOCKHOLM_BBOX = (58.95, 59.82, 17.35, 19.10)  # south, north, west, east
 # Wide Sweden corridor for long-distance rail (includes Copenhagen/Öresund side of cross-border services).
 NATIONAL_BBOX = (54.80, 69.60, 10.00, 24.80)
-DAY0 = dt.datetime.now(ZoneInfo('Europe/Stockholm')).date()
-DAYS = [DAY0 - dt.timedelta(days=1), DAY0, DAY0 + dt.timedelta(days=1)]
+# Representative archived week (Mon..Sun), repeated by weekday in the UI.
+DAY0 = dt.date(2026, 11, 12)
+DAYS = [dt.date(2026, 11, 9) + dt.timedelta(days=i) for i in range(7)]
 SKIP_MODES = {'other'}
 LOCAL_ONLY_MODES = {'metro', 'tram', 'commuter', 'localrail', 'ferry'}
 
@@ -346,11 +347,12 @@ def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, 
 
 
 def main():
-    sl = os.environ.get('GTFS_SL_KEY', '').strip()
-    sw = os.environ.get('GTFS_SWEDEN_KEY', '').strip()
-    feeds = [('SL', sl, 'https://opendata.samtrafiken.se/gtfs/sl/sl.zip')]
-    if sw:
-        feeds.append(('Sweden 3', sw, 'https://opendata.samtrafiken.se/gtfs-sweden/sweden.zip'))
+    # Offline snapshot: one historical national archive, NO API key / quota.
+    url = os.environ.get('GTFS_ARCHIVE_URL',
+        'https://data.samtrafiken.se/trafiklab/gtfs-sverige-2/2026/11/sweden-20261104.zip')
+    if not url.startswith('https://data.samtrafiken.se/trafiklab/gtfs-sverige-2/'):
+        raise ValueError('Only the verified public Samtrafiken historical archive is allowed')
+    feeds = [('Archive Sverige 2', None, url)]
 
     global_routes = {}
     global_stops = {}
@@ -359,27 +361,23 @@ def main():
     seen = set()
     used = []
 
-    for label, key, url in feeds:
-        z = fetch_feed(label, key, url)
-        if not z:
-            if label == 'SL':
-                # Never deploy a "Stockholm" site without SL; this would
-                # silently remove all metro, local buses and commuter trains.
-                print('ERROR: SL dataset unavailable. Existing GitHub Pages release '
-                      'is unchanged. Retry after Trafiklab quota recovers.', file=sys.stderr)
-                return 2
-            continue
+    for label, _, url in feeds:
+        print('Downloading public timetable archive once:', url, flush=True)
+        request=urllib.request.Request(url,headers={'User-Agent':'StockholmTransitArchiveSimulator/1.0',
+            'Accept-Encoding':'identity'})
+        with urllib.request.urlopen(request,timeout=240) as response:
+            raw=response.read()
+        if not zipfile.is_zipfile(io.BytesIO(raw)):
+            raise ValueError('Archived download is not a ZIP')
+        print('Archive downloaded:',round(len(raw)/1024/1024,1),'MiB',flush=True)
+        z=zipfile.ZipFile(io.BytesIO(raw))
         try:
-            process_feed(z, label, global_routes, global_stops, global_shapes, per_day, seen)
+            process_feed(z,label,global_routes,global_stops,global_shapes,per_day,seen)
             used.append(label)
-        except Exception as e:
-            print('Processing failed:', label, str(e), file=sys.stderr)
-            raise
         finally:
             z.close()
-
     if not used:
-        print('No datasets downloaded. Need GTFS_SL_KEY at minimum.', file=sys.stderr)
+        print('No archived timetable processed.',file=sys.stderr)
         return 2
 
     # Add track-following geometry for missing Stockholm–Arlanda rail shapes.
@@ -439,7 +437,9 @@ def main():
         'stockholm_bounds': STOCKHOLM_BBOX,
         'national_bounds': NATIONAL_BBOX,
         'excluded_modes': sorted(SKIP_MODES),
-        'mode': 'schedule-only',
+        'mode': 'historical-weekday-repeat',
+        'snapshot': '2026-11-04',
+        'historical': True,
     }
     net = {'meta': meta, 'routes': routes, 'stops': stops, 'shapes': shapes}
     (OUT / 'network.json').write_text(json.dumps(net, ensure_ascii=False, separators=(',', ':')))
@@ -450,15 +450,18 @@ def main():
         'generated': meta['generated'],
         'sources': used,
         'counts': {str(d): len(per_day[d]) for d in DAYS},
+        'weekly_repeat': True, 'snapshot': '2026-11-04',
     }, ensure_ascii=False, separators=(',', ':')))
     mode_counts = collections.Counter()
     for item in per_day[DAY0]:
         mode_counts[routes[item[0]][2]] += 1
     print('TODAY TRIPS BY MODE:',dict(mode_counts),flush=True)
-    if 'SL' in used and (not mode_counts.get('metro') or not mode_counts.get('commuter')):
-        print('WARNING: SL metro/commuter missing in GTFS. Check route_type, service dates and route metadata.',flush=True)
+    missing=[mode for mode in ('metro','commuter','bus','tram','rail') if not any(routes[item[0]][2]==mode for trips in per_day.values() for item in trips)]
+    if missing:
+        print('WARNING: Modes missing from archived feed:',missing,flush=True)
+    print('OFFLINE WEEKLY SNAPSHOT: 2026-11-04, archived representative week:',[str(d) for d in DAYS],flush=True)
     # Photo downloads happen once per GitHub build, not at page load.
-    if os.environ.get('PHOTO_DOWNLOAD', '1') != '0':
+    if os.environ.get('PHOTO_DOWNLOAD', '0') != '0':
         try:
             from fetch_photos import generate as generate_photos
             generate_photos()
