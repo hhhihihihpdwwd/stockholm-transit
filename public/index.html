@@ -102,14 +102,17 @@ return {id:day+':'+i,route,info:routeInfo,head,stops,coords,shape:anchors?shape:
 function updateActive(now){if(!net)return;const list=[];for(const [day,trips] of Object.entries(schedules)){const offset=day===now.date?0:(day<now.date?86400:-86400);const t=now.seconds+offset;for(let i=0;i<trips.length;i++){const trip=trips[i];if(t<trip[0]-90||t>trip[1]+75)continue;const key=day+':'+i;let v=displayCached.get(key);if(!v){v=buildTrip(trip[2],i,day);if(v){displayCached.set(key,v)}}if(v&&enabled.has(v.mode))list.push({v,t})}}
 active=list;const counts={};for(const x of list)counts[x.v.mode]=(counts[x.v.mode]||0)+1;$('count').innerHTML=`<strong>${list.length}</strong> planerade tåg/fordon`;if(selected&&!list.some(x=>x.v.id===selected.id)){selected=null;follow=false;layer.clearLayers();stationLayer.clearLayers();drawDetail(true)}
 }
+const SPEED_LIMIT={bus:90,metro:100,commuter:185,tram:85,localrail:130,rail:250,ferry:70};
 function progressFor(v,t){const s=v.stops;let idx=0;while(idx<s.length-1 && t>=s[idx][2])idx++;if(t<s[0][1])idx=0;if(t>=s.at(-1)[1])idx=s.length-1;
-let position=v.coords[idx],velocity=0,dist=0,remain=0;
+let position=v.coords[idx],velocity=0,dist=0,remain=0,invalidSpeed=false;
 if(idx>0&&t<s[idx][1]){
 const prev=idx-1,a=s[prev][2],b=s[idx][1],duration=Math.max(1,b-a);const raw=Math.max(0,Math.min(1,(t-a)/duration));
 // Smoothly accelerate and decelerate without changing arrival/departure times.
-const ramp=Math.min(.15,Math.max(.025,10/duration));const eased=(raw<ramp?raw*raw/(2*ramp*(1-ramp)):raw>1-ramp?1-(1-raw)*(1-raw)/(2*ramp*(1-ramp)):(raw-ramp/2)/(1-ramp));
-const slope=raw<ramp?raw/(ramp*(1-ramp)):raw>1-ramp?(1-raw)/(ramp*(1-ramp)):1/(1-ramp);
-if(v.shape){const da=v.anchors[prev],db=v.anchors[idx];if(db>da+2){position=geomAt(v.shape,v.cum,da+(db-da)*eased);dist=(db-da)*(1-eased);velocity=(db-da)/duration*slope*3.6;}}
+const perHour=v.shape&&v.anchors?(v.anchors[idx]-v.anchors[Math.max(0,idx-1)])/duration*3.6:0;
+const maxSpeed=SPEED_LIMIT[v.mode]||180;
+const ramp=perHour>maxSpeed*.82?0:Math.min(.10,Math.max(.012,6/duration));const eased=ramp===0?raw:(raw<ramp?raw*raw/(2*ramp*(1-ramp)):raw>1-ramp?1-(1-raw)*(1-raw)/(2*ramp*(1-ramp)):(raw-ramp/2)/(1-ramp));
+const slope=ramp===0?1:(raw<ramp?raw/(ramp*(1-ramp)):raw>1-ramp?(1-raw)/(ramp*(1-ramp)):1/(1-ramp));
+if(v.shape){const da=v.anchors[prev],db=v.anchors[idx];if(db>da+2){position=geomAt(v.shape,v.cum,da+(db-da)*eased);dist=(db-da)*(1-eased);velocity=(db-da)/duration*slope*3.6; if(velocity>maxSpeed*1.05)invalidSpeed=true;}}
 else { // No invented straight railway track: hold at last scheduled station.
 const aPos=v.coords[prev],bPos=v.coords[idx];
 // Missing street/rail geometry: keep the last known stop, never cross water.
@@ -117,7 +120,7 @@ position=aPos;velocity=0;dist=0;
 }
 remain=b-t;
 }else if(t>=s[idx][1]&&t<=s[idx][2]){velocity=0;remain=s[idx][2]-t;dist=0}
-return {index:idx,pos:position,speed:Math.max(0,velocity),distance:dist,remaining:Math.max(0,remain),routeDist:v.anchors?.[idx]??0};}
+return {index:idx,pos:position,speed:invalidSpeed?null:Math.max(0,velocity),distance:dist,remaining:Math.max(0,remain),routeDist:v.anchors?.[idx]??0};}
 // Canvas is a native Leaflet overlay, NOT an absolutely-positioned child of map
 // container. It therefore inherits the map pane's pan/zoom transform.
 const CanvasLayer=L.Layer.extend({
@@ -208,7 +211,7 @@ if(rebuildStations)for(let i=0;i<v.stops.length;i++){const p=v.coords[i],passed=
 function updateStops(v,pg){const key=v.id+':'+pg.index;if(key===displayStopKey)return;displayStopKey=key;const html=v.stops.map((s,i)=>`<div class="stop ${i<pg.index?'passed':i===pg.index?'next':''}" data-idx="${i}"><span class="dot"></span><span class="stopName">${escapeHTML(net.stops[s[0]][2])}</span><span class="stopAt">${secTxt(s[1])}</span></div>`).join('');$('stopScroll').innerHTML=html;const node=$('stopScroll').querySelector('.next');if(node && Date.now()>manualScrollUntil)requestAnimationFrame(()=>{if(key!==displayStopKey)return;const list=$('stopScroll');const r=node.getBoundingClientRect(),outer=list.getBoundingClientRect();const target=list.scrollTop+r.top-outer.top-(list.clientHeight-r.height)/2;list.scrollTo({top:Math.max(0,target),behavior:'smooth'})})}
 $('stopScroll').addEventListener('wheel',()=>manualScrollUntil=Date.now()+15000,{passive:true});$('stopScroll').addEventListener('touchstart',()=>manualScrollUntil=Date.now()+15000,{passive:true});
 function drawDetail(force=false){if(!net)return;const now=stockholm();if(!selected){if(force){$('vehicleTitle').textContent='Stockholm / Sverige';$('vehicleSub').textContent='Klicka på ett fordon på kartan';$('routeBox').textContent='SE';$('routeBox').style.setProperty('--route','#237ed5');$('nextName').textContent='Inget fordon valt';$('nextTime').textContent='—';$('stopScroll').innerHTML='<div class="empty">Välj en buss, tunnelbana, pendeltåg eller annat fordon på kartan.</div>';$('speed').textContent='—';$('distance').textContent='—';$('remaining').textContent='—';$('photo').style.display='none';$('follow').disabled=true;displayStopKey='';}return}
-lastDetailDraw=performance.now();let v=selected;const time=now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0),pg=progressFor(v,time),stop=v.stops[pg.index],route=v.info;const mode=MODES.find(m=>m[0]===v.mode);$('routeBox').textContent=route[0]?.slice(0,11)||mode?.[1]||'SL';$('routeBox').style.setProperty('--route','#'+route[3]);$('vehicleTitle').textContent=v.head||route[1]||'Fordon';$('vehicleSub').textContent=(mode?.[2]||'Fordon')+' · '+(route[4]||'SL')+(v.shape?' · verifierad färdväg':' · färdväg saknas');$('nextName').textContent=net.stops[stop[0]][2];$('nextTime').textContent=secTxt(stop[1]);$('progressText').textContent=pg.index+'/'+(v.stops.length-1)+' · SIMULERAT';$('speed').textContent=Math.round(pg.speed)+' km/h';$('distance').textContent=pg.distance>0?(pg.distance/1000).toFixed(1)+' km':'0 km';$('remaining').textContent=pg.remaining>60?Math.ceil(pg.remaining/60)+' min':pg.remaining+' s';$('follow').disabled=false;updateStops(v,pg);if(force)routeDraw(v,pg)}
+lastDetailDraw=performance.now();let v=selected;const time=now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0),pg=progressFor(v,time),stop=v.stops[pg.index],route=v.info;const mode=MODES.find(m=>m[0]===v.mode);$('routeBox').textContent=route[0]?.slice(0,11)||mode?.[1]||'SL';$('routeBox').style.setProperty('--route','#'+route[3]);$('vehicleTitle').textContent=v.head||route[1]||'Fordon';$('vehicleSub').textContent=(mode?.[2]||'Fordon')+' · '+(route[4]||'SL')+(v.shape?(v.estimated?' · uppskattad korridor':' · kartlagd färdväg'):' · färdväg saknas');$('nextName').textContent=net.stops[stop[0]][2];$('nextTime').textContent=secTxt(stop[1]);$('progressText').textContent=pg.index+'/'+(v.stops.length-1)+' · SIMULERAT';$('speed').textContent=pg.speed===null?'— km/h':Math.round(pg.speed)+' km/h';$('distance').textContent=pg.distance>0?(pg.distance/1000).toFixed(1)+' km':'0 km';$('remaining').textContent=pg.remaining>60?Math.ceil(pg.remaining/60)+' min':pg.remaining+' s';$('follow').disabled=false;updateStops(v,pg);if(force)routeDraw(v,pg)}
 function selectVehicle(v){selected=v;follow=false;$('follow').textContent='◎ Följ fordon';displayStopKey='';manualScrollUntil=0;const now=stockholm();const pg=progressFor(v,now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0));if(pg.pos)map.flyTo(pg.pos,Math.max(11,map.getZoom()),{duration:.75});drawDetail(true);showImage(v)}
 function clear(){selected=null;follow=false;layer.clearLayers();stationLayer.clearLayers();$('follow').textContent='◎ Följ fordon';drawDetail(true)}
 $('clear').onclick=clear;$('overview').onclick=()=>{clear();map.flyToBounds(defaultBounds,{padding:[28,28],maxZoom:11,duration:1})};$('swedenView').onclick=()=>{clear();map.flyToBounds(swedenBounds,{padding:[28,28],maxZoom:6,duration:1.2})};$('follow').onclick=()=>{follow=!follow;$('follow').textContent=follow?'◎ Följer fordon':'◎ Följ fordon'};
@@ -264,26 +267,40 @@ function photoFallbackFor(mode,v){
  const icon=document.createElement('img');icon.src=IMAGE_SPRITES[v?spriteFor(v):mode];icon.alt=mode+' – illustration';icon.className='fallbackVehicle';el.appendChild(icon);
 }
 function photoCandidates(v){
- const name=((v.info?.[0]||'')+' '+(v.info?.[1]||'')+' '+(v.head||'')+' '+(v.info?.[4]||'')).toLowerCase();
- const id=v.id||'';
- if(v.mode==='metro')return (id.length%2)?['metro_c30','metro_c20']:['metro_c20','metro_c30'];
+ const line=String(v.info?.[0]||'').trim();
+ const name=(line+' '+(v.info?.[1]||'')+' '+(v.head||'')+' '+(v.info?.[4]||'')).toLocaleLowerCase('sv-SE');
+ const agency=String(v.info?.[4]||'').toLocaleLowerCase('sv-SE');
+ if(v.mode==='metro')return ['13','14'].includes(line)?['metro_c30','metro_c20']:['metro_c20','metro_c30'];
  if(v.mode==='commuter')return ['commuter_x60','commuter_x60_alt'];
  if(v.mode==='tram')return ['tram_a35','tram_a32'];
- if(v.mode==='localrail')return name.includes('roslags')||name.includes('25')||name.includes('26')||name.includes('27')||name.includes('28')||name.includes('29')?['local_x15p','local_x15p_alt']:[];
- if(v.mode==='rail'){
-  if(name.includes('arlanda express')||name.includes('x3'))return ['rail_arlanda'];
-  if(name.includes('mälar')||name.includes('er1'))return ['rail_malartag'];
-  if(name.includes('öresund')||name.includes('oresund')||name.includes('øresund'))return ['rail_oresund'];
-  if(name.includes('sj ')||name.includes('x2000')||name.includes('snabbtåg'))return ['rail_x2000'];
-  return []; // Never show SJ train photo for unknown operator/type.
+ if(v.mode==='localrail'){
+   if(['25','26'].includes(line)||name.includes('saltsjö'))return ['local_saltsjo'];
+   if(['27','28','29'].includes(line)||name.includes('roslags'))return ['local_x15p','local_x15p_alt'];
+   return ['tram_a35','tram_a32'];
  }
- if(v.mode==='ferry')return ['ferry_djurgarden10'];
+ if(v.mode==='rail'){
+   if(name.includes('arlanda express')||agency.includes('arlanda'))return ['rail_arlanda'];
+   if(name.includes('mälar')||agency.includes('mälar'))return ['rail_malartag'];
+   if(name.includes('vr snabbtåg')||agency.includes('vr')||name.includes('mtrx'))return ['rail_vr_x74'];
+   if(name.includes('snälltåg'))return ['rail_snalltaget'];
+   if(name.includes('öresund')||name.includes('oresund'))return ['rail_oresund'];
+   if(name.includes('x55')||name.includes('sj 3000'))return ['rail_sj3000'];
+   if(name.includes('x40')||name.includes('dubbeldäck'))return ['rail_sj_x40'];
+   if(name.includes('x2000')||name.includes('sj snabbtåg'))return ['rail_x2000'];
+   if(name.includes('intercity')||name.includes('nattåg')||name.includes('rc6'))return ['rail_sj_rc6'];
+   if(agency.includes('sj'))return ['rail_x2000','rail_sj_rc6']; // Operator known, type uncertain.
+   return [];
+ }
+ if(v.mode==='ferry'){
+   if(line==='84')return ['ferry_84'];
+   if(line==='82')return ['ferry_djurgarden10'];
+   return []; // Never substitute Djurgårdsfärjan for another boat line.
+ }
  if(v.mode==='bus'){
-   const line=(v.info?.[0]||'').trim();
-   if(['1','2','3','4'].includes(line))return ['bus_blue2'];
+   if(['1','2','3','4','6'].includes(line))return ['bus_blue2'];
    if(line==='69')return ['bus_red69','bus_red75'];
    if(line==='75')return ['bus_red75','bus_red69'];
-   return ['bus_red69','bus_red75']; // illustrative city bus; not the exact line
+   return ['bus_red69','bus_red75'];
  }
  return [];
 }
