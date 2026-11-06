@@ -1,4 +1,4 @@
-name: Publish Stockholm offline timetable (one time)
+name: Stockholm Transit V7 - Build offline world (one time)
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,9 +24,10 @@ jobs:
       - name: Generate one-time archive timetable (no Trafiklab keys)
         env:
           GTFS_ARCHIVE_URL: https://data.samtrafiken.se/trafiklab/gtfs-sverige-2/2026/11/sweden-20261104.zip
-          PHOTO_DOWNLOAD: '0'
+          PHOTO_DOWNLOAD: '1'
+          OSM_GEOMETRY: '1'
           OSM_RAIL_FALLBACK: '0'
-        run: python scripts/build.py
+        run: python -u scripts/build.py
       - name: Validate the offline dataset before publishing
         run: |
           python - <<'PY'
@@ -46,7 +47,18 @@ jobs:
           if missing:
               print('STOP: Missing essential modes from snapshot:',missing,file=sys.stderr)
               raise SystemExit(2)
-          print('Validated historical weekly simulation. No daily API download is configured.')
+          geometry=collections.Counter()
+          for day in m['dates']:
+              for t in json.loads((root/(day+'.json')).read_text())['trips']:
+                  if t[2]>=0:geometry[n['routes'][t[0]][2]]+=1
+          print('VERIFIED OSM ROUTE COVERAGE:',{mode:f'{geometry[mode]}/{counts[mode]}' for mode in counts},flush=True)
+          # Never replace last release with a version where every metro or bus
+          # is parked at stops due to an unavailable geodata provider.
+          if counts['metro'] and geometry['metro']/counts['metro']<.18:
+              raise SystemExit('STOP: Less than 18% of metro trips follow mapped tracks')
+          if counts['bus'] and geometry['bus']/counts['bus']<.10:
+              raise SystemExit('STOP: Less than 10% of Stockholm bus trips follow mapped roads')
+          print('Validated historical weekly simulation. No daily Trafiklab download.')
           PY
       - name: Configure Pages
         uses: actions/configure-pages@v5
