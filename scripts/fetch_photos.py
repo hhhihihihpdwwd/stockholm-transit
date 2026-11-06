@@ -19,45 +19,9 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 # Titles selected by vehicle descriptions and categories on Wikimedia Commons.
 # The image is an illustrative photo of the model / category, not the live vehicle.
-CATALOG = {
-    'metro_c30': ('Stockholm metro - SL C30 (1).jpg', 'Tunnelbana · C30'),
-    'metro_c20': ('Söderströmsbron, SL C20 - 20251123 - 23.jpg', 'Tunnelbana · C20'),
-    'commuter_x60': ('SL X60, Stockholm Centralstation, 20240106 - 06.jpg', 'Pendeltåg · X60, sichtbarer Zug'),
-    'commuter_x60_alt': ('SL X60, Stockholm Centralstation, 20240106 - 02.jpg', 'Pendeltåg · X60'),
-    'tram_a35': ('2015-08-29 1726 SL A35 463 mellan Ulvsundabron och Tranebergstunneln.jpg', 'Tvärbanan · A35'),
-    'tram_a32': ('A32 spårvagn 2023 08.jpg', 'Spårvagn · A32'),
-    'local_x15p': ('X15p vid Visinge station.jpg', 'Roslagsbanan · X15p'),
-    'local_x15p_alt': ('X15p, Stockholms östra - 20250504 - 06.jpg', 'Roslagsbanan · X15p'),
-    'rail_sj3000': ('Stockholm Central, SJ 3000 - 20260327 - 03.jpg', 'SJ · SJ 3000 / X55'),
-    'rail_sj_x40': ('SJ X40, Stockholm Central - 20260311 - 05.jpg', 'SJ · X40 Doppelstockzug'),
-    'rail_snalltaget': ('Snälltåget, Stockholms centralstation - 20260514 - 10.jpg', 'Snälltåget · Fernzug'),
-    'rail_x2000': ('Stockholms central, X2000 - 20260515 - 09.jpg', 'SJ · X2000'),
-    'rail_arlanda': ('Arlanda Express X3.JPG', 'Arlanda Express · X3'),
-    'rail_malartag': ('Sverige Mälartåg ER1 111, Gävle IMG 6437.jpg', 'Mälartåg · ER1'),
-    'rail_oresund': ('Öresundståg i östra Sölvesborg.JPG', 'Öresundståg · X31'),
-    'ferry_djurgarden10': ('Djurgården 10.jpg', 'Djurgårdsfärjan · Djurgården 10'),
-    'bus_red69': ('SL bus line 69 at Norrmalmstorg.jpg', 'SL buss · röd stadsbuss'),
-    'bus_red75': ('SL Buss 75, Stockholm - 20240430 - 14.jpg', 'SL buss · röd stadsbuss'),
-    'bus_blue2': ('SL bus line 2 at Norrmalmstorg.jpg', 'SL buss · blå innerstadsbuss'),
-    'local_saltsjo': ('Saltsjöbanan at Saltsjöbaden station.jpg', 'Saltsjöbanan · C10/C11'),
-    'ferry_84': ('Eskil November 2024 01.jpg', 'Pendelbåt 84 · M/S Eskil'),
-    'rail_sj_rc6': ('SJ Rc 1383 Stockholm Central.jpg', 'SJ InterCity · Rc6'),
-    'rail_vr_x74': ('VR X74 1.jpg', 'VR Snabbtåg · X74'),
-}
-
-
-# Only substitute photos depicting the same general vehicle family.
-# These Commons titles were located in public Commons file/category listings;
-# licensing and attribution are read from metadata at download time.
-ALTERNATES = {
-    'commuter_x60': ['SL X60 6010 A.jpg', 'SL X60, Stockholm Centralstation, 20240106 - 02.jpg'],
-    'commuter_x60_alt': ['SL X60, Stockholm Centralstation, 20240106 - 06.jpg'],
-    'rail_arlanda': ['Arlanda Express X3.JPG'],
-    'rail_malartag': ['Sverige Mälartåg ER1 111, Gävle IMG 6427 1-8-2.jpg', 'Stockholm ER1.jpg'],
-    'bus_red69': ['SL Buss 69, T-Centralen - 20250419 - 01.jpg', 'SL bus line 69 at Kungsträdgården.jpg'],
-    'bus_red75': ['SL Buss 75, Stockholm - 20240430 - 14.jpg', 'SL bus line 69 at Norrmalmstorg.jpg'],
-    'bus_blue2': ['SL bus line 2 at Norrmalmstorg.jpg'],
-}
+APPROVALS = json.loads((ROOT / 'approved_photos.json').read_text(encoding='utf-8'))['photos']
+CATALOG = {key:(item['title'],item['label']) for key,item in APPROVALS.items()}
+ALTERNATES = {}  # No substitutions without explicit user approval.
 
 
 
@@ -146,7 +110,7 @@ def generate():
     index, failures = {}, {}
     for key, (title, caption) in CATALOG.items():
         cached = reusable_photo(previous, key)
-        if cached is not None:
+        if cached is not None and cached.get('commons_title') == title:
             index[key] = cached
             print('PHOTO REUSED:', key, flush=True)
             continue

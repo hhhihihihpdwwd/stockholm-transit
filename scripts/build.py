@@ -566,13 +566,10 @@ def main():
     if missing:
         print('WARNING: Modes missing from archived feed:',missing,flush=True)
     print('OFFLINE WEEKLY SNAPSHOT: 2026-11-04, archived representative week:',[str(d) for d in DAYS],flush=True)
-    # Photo downloads happen once per GitHub build, not at page load.
-    if os.environ.get('PHOTO_DOWNLOAD', '0') != '0':
-        try:
-            from fetch_photos import generate as generate_photos
-            generate_photos()
-        except Exception as exc:
-            print('Photo library fallback:', str(exc)[:140], flush=True)
+    # V10: main data builds never contact Wikimedia; only review committed local files.
+    from local_photos import write_local_catalog
+    report = write_local_catalog()
+    print('OFFLINE PHOTO LIBRARY:', report['available'], '/', report['expected'], 'local images; no network requests', flush=True)
     for f in OUT.iterdir():
         print(f.name, round(f.stat().st_size / 1024 / 1024, 2), 'MB')
     return 0

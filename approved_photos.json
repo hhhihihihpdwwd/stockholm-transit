@@ -1,0 +1,603 @@
+{
+  "version": "stockholm-approved-35-final",
+  "groups": [
+    {
+      "id": "metro_10",
+      "label": "Tunnelbana C20 – an der Station Kungsträdgården",
+      "file": "Kungsträdgården Metro, SL C20, 20240525 - 25.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Kungstr%C3%A4dg%C3%A5rden_Metro,_SL_C20,_20240525_-_25.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Kungstr%C3%A4dg%C3%A5rden%20Metro%2C%20SL%20C20%2C%2020240525%20-%2025.jpg?width=650",
+      "status": "approved",
+      "old_file": "Söderströmsbron, SL C20 - 20251123 - 23.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:S%C3%B6derstr%C3%B6msbron%2C_SL_C20_-_20251123_-_23.jpg",
+      "photo_key": "metro_c20_blue"
+    },
+    {
+      "id": "metro_11",
+      "label": "Tunnelbana C20 – an der Station Kungsträdgården",
+      "file": "Kungsträdgården Metro, SL C20, 20240525 - 25.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Kungstr%C3%A4dg%C3%A5rden_Metro,_SL_C20,_20240525_-_25.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Kungstr%C3%A4dg%C3%A5rden%20Metro%2C%20SL%20C20%2C%2020240525%20-%2025.jpg?width=650",
+      "status": "approved",
+      "old_file": "Söderströmsbron, SL C20 - 20251123 - 23.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:S%C3%B6derstr%C3%B6msbron%2C_SL_C20_-_20251123_-_23.jpg",
+      "photo_key": "metro_c20_blue"
+    },
+    {
+      "id": "metro_13",
+      "label": "Metro 13",
+      "file": "Stockholm metro - SL C30 (1).jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Stockholm_metro_-_SL_C30_(1).jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Stockholm%20metro%20-%20SL%20C30%20%281%29.jpg?width=650",
+      "status": "approved",
+      "old_file": "Stockholm metro - SL C30 (1).jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Stockholm_metro_-_SL_C30_%281%29.jpg",
+      "photo_key": "metro_c30"
+    },
+    {
+      "id": "metro_14",
+      "label": "Metro 14",
+      "file": "Stockholm metro - SL C30 (1).jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Stockholm_metro_-_SL_C30_(1).jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Stockholm%20metro%20-%20SL%20C30%20%281%29.jpg?width=650",
+      "status": "approved",
+      "old_file": "Stockholm metro - SL C30 (1).jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Stockholm_metro_-_SL_C30_%281%29.jpg",
+      "photo_key": "metro_c30"
+    },
+    {
+      "id": "metro_17",
+      "label": "Tunnelbana C20 – Außenaufnahme",
+      "file": "SL C20 Gamla Stan, Stockholm.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_C20_Gamla_Stan,_Stockholm.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/EU-SE-Stockholm-Metro%20trains%20C20.JPG?width=650",
+      "status": "approved",
+      "old_file": "Söderströmsbron, SL C20 - 20251123 - 23.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:S%C3%B6derstr%C3%B6msbron%2C_SL_C20_-_20251123_-_23.jpg",
+      "photo_key": "metro_c20_green"
+    },
+    {
+      "id": "metro_18",
+      "label": "Tunnelbana C20 – Außenaufnahme",
+      "file": "SL C20 Gamla Stan, Stockholm.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_C20_Gamla_Stan,_Stockholm.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/EU-SE-Stockholm-Metro%20trains%20C20.JPG?width=650",
+      "status": "approved",
+      "old_file": "Söderströmsbron, SL C20 - 20251123 - 23.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:S%C3%B6derstr%C3%B6msbron%2C_SL_C20_-_20251123_-_23.jpg",
+      "photo_key": "metro_c20_green"
+    },
+    {
+      "id": "metro_19",
+      "label": "Tunnelbana C20 – Außenaufnahme",
+      "file": "SL C20 Gamla Stan, Stockholm.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_C20_Gamla_Stan,_Stockholm.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/EU-SE-Stockholm-Metro%20trains%20C20.JPG?width=650",
+      "status": "approved",
+      "old_file": "Söderströmsbron, SL C20 - 20251123 - 23.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:S%C3%B6derstr%C3%B6msbron%2C_SL_C20_-_20251123_-_23.jpg",
+      "photo_key": "metro_c20_green"
+    },
+    {
+      "id": "commuter_x60",
+      "label": "Commuter X60",
+      "file": "SL X60, Stockholm Centralstation, 20240106 - 06.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_X60%2C_Stockholm_Centralstation%2C_20240106_-_06.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/SL%20X60%2C%20Stockholm%20Centralstation%2C%2020240106%20-%2006.jpg?width=650",
+      "status": "approved",
+      "old_file": "SL X60, Stockholm Centralstation, 20240106 - 06.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:SL_X60%2C_Stockholm_Centralstation%2C_20240106_-_06.jpg",
+      "photo_key": "commuter_x60"
+    },
+    {
+      "id": "tram_city7",
+      "label": "Spårväg City – A35 auf Linie 7",
+      "file": "A35 på Spårväg City.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:A35_p%C3%A5_Sp%C3%A5rv%C3%A4g_City.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/A35%20p%C3%A5%20Sp%C3%A5rv%C3%A4g%20City.jpg?width=650",
+      "status": "approved",
+      "old_file": "A32 spårvagn 2023 08.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:A32_sp%C3%A5rvagn_2023_08.jpg",
+      "photo_key": "tram_city7"
+    },
+    {
+      "id": "tram_nockeby12",
+      "label": "Nockebybanan – A32 auf Linie 12",
+      "file": "2024-07-23 3248 SL A32 427 på linje 12 i Alvik.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:2024-07-23_3248_SL_A32_427_p%C3%A5_linje_12_i_Alvik.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/2024-07-23%203248%20SL%20A32%20427%20p%C3%A5%20linje%2012%20i%20Alvik.jpg?width=650",
+      "status": "approved",
+      "old_file": "A32 spårvagn 2023 08.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:A32_sp%C3%A5rvagn_2023_08.jpg",
+      "photo_key": "tram_nockeby12"
+    },
+    {
+      "id": "tram_lidingo21",
+      "label": "Tram Lidingo21",
+      "file": "2015-08-29 1726 SL A35 463 mellan Ulvsundabron och Tranebergstunneln.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:2015-08-29_1726_SL_A35_463_mellan_Ulvsundabron_och_Tranebergstunneln.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/2015-08-29%201726%20SL%20A35%20463%20mellan%20Ulvsundabron%20och%20Tranebergstunneln.jpg?width=650",
+      "status": "approved",
+      "old_file": "2015-08-29 1726 SL A35 463 mellan Ulvsundabron och Tranebergstunneln.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:2015-08-29_1726_SL_A35_463_mellan_Ulvsundabron_och_Tranebergstunneln.jpg",
+      "photo_key": "tram_a35"
+    },
+    {
+      "id": "tram_tvar30",
+      "label": "Tram Tvar30",
+      "file": "2015-08-29 1726 SL A35 463 mellan Ulvsundabron och Tranebergstunneln.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:2015-08-29_1726_SL_A35_463_mellan_Ulvsundabron_och_Tranebergstunneln.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/2015-08-29%201726%20SL%20A35%20463%20mellan%20Ulvsundabron%20och%20Tranebergstunneln.jpg?width=650",
+      "status": "approved",
+      "old_file": "2015-08-29 1726 SL A35 463 mellan Ulvsundabron och Tranebergstunneln.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:2015-08-29_1726_SL_A35_463_mellan_Ulvsundabron_och_Tranebergstunneln.jpg",
+      "photo_key": "tram_a35"
+    },
+    {
+      "id": "local_saltsjo",
+      "label": "Local Saltsjo",
+      "file": "Saltsjöbanan at Saltsjöbaden station.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Saltsj%C3%B6banan_at_Saltsj%C3%B6baden_station.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Saltsj%C3%B6banan%20at%20Saltsj%C3%B6baden%20station.jpg?width=650",
+      "status": "approved",
+      "old_file": "Saltsjöbanan at Saltsjöbaden station.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Saltsj%C3%B6banan_at_Saltsj%C3%B6baden_station.jpg",
+      "photo_key": "local_saltsjo"
+    },
+    {
+      "id": "local_roslag",
+      "label": "Local Roslag",
+      "file": "X15p vid Visinge station.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:X15p_vid_Visinge_station.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/X15p%20vid%20Visinge%20station.jpg?width=650",
+      "status": "approved",
+      "old_file": "X15p vid Visinge station.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:X15p_vid_Visinge_station.jpg",
+      "photo_key": "local_x15p"
+    },
+    {
+      "id": "ferry_80",
+      "label": "Ferry 80",
+      "file": "Djurgården 10.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Djurg%C3%A5rden_10.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Djurg%C3%A5rden%2010.jpg?width=650",
+      "status": "approved",
+      "old_file": "Djurgården 10.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Djurg%C3%A5rden_10.jpg",
+      "photo_key": "ferry_djurgarden10"
+    },
+    {
+      "id": "ferry_82",
+      "label": "Ferry 82",
+      "file": "Djurgården 10.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Djurg%C3%A5rden_10.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Djurg%C3%A5rden%2010.jpg?width=650",
+      "status": "approved",
+      "old_file": "Djurgården 10.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Djurg%C3%A5rden_10.jpg",
+      "photo_key": "ferry_djurgarden10"
+    },
+    {
+      "id": "ferry_84",
+      "label": "Ferry 84",
+      "file": "Eskil November 2024 01.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Eskil_November_2024_01.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Eskil%20November%202024%2001.jpg?width=650",
+      "status": "approved",
+      "old_file": "Eskil November 2024 01.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Eskil_November_2024_01.jpg",
+      "photo_key": "ferry_84"
+    },
+    {
+      "id": "ferry_89",
+      "label": "Ferry 89",
+      "file": "Djurgården 10.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Djurg%C3%A5rden_10.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Djurg%C3%A5rden%2010.jpg?width=650",
+      "status": "approved",
+      "old_file": "Djurgården 10.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Djurg%C3%A5rden_10.jpg",
+      "photo_key": "ferry_djurgarden10"
+    },
+    {
+      "id": "rail_x2000",
+      "label": "SJ X2000 – Zug in Malmö",
+      "file": "X2000 I Malmö Mot Stockholm.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:X2000_I_Malm%C3%B6_Mot_Stockholm.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/X2000%20I%20Malm%C3%B6%20Mot%20Stockholm.jpg?width=650",
+      "status": "approved",
+      "old_file": "Stockholms central, X2000 - 20260515 - 09.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Stockholms_central%2C_X2000_-_20260515_-_09.jpg",
+      "photo_key": "rail_x2000"
+    },
+    {
+      "id": "rail_x55",
+      "label": "Rail X55",
+      "file": "Stockholm Central, SJ 3000 - 20260327 - 03.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Stockholm_Central%2C_SJ_3000_-_20260327_-_03.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Stockholm%20Central%2C%20SJ%203000%20-%2020260327%20-%2003.jpg?width=650",
+      "status": "approved",
+      "old_file": "Stockholm Central, SJ 3000 - 20260327 - 03.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Stockholm_Central%2C_SJ_3000_-_20260327_-_03.jpg",
+      "photo_key": "rail_sj3000"
+    },
+    {
+      "id": "rail_x40",
+      "label": "SJ X40 – Regionalzug in Köping",
+      "file": "SJ X40, Köping - 20260513 - 01.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SJ_X40,_K%C3%B6ping_-_20260513_-_01.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/SJ%20X40%2C%20K%C3%B6ping%20-%2020260513%20-%2001.jpg?width=650",
+      "status": "approved",
+      "old_file": "SJ X40, Stockholm Central - 20260311 - 05.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:SJ_X40%2C_Stockholm_Central_-_20260311_-_05.jpg",
+      "photo_key": "rail_sj_x40"
+    },
+    {
+      "id": "rail_rc6",
+      "label": "Rail Rc6",
+      "file": "SJ Rc 1383 Stockholm Central.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SJ_Rc_1383_Stockholm_Central.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/SJ%20Rc%201383%20Stockholm%20Central.jpg?width=650",
+      "status": "approved",
+      "old_file": "SJ Rc 1383 Stockholm Central.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:SJ_Rc_1383_Stockholm_Central.jpg",
+      "photo_key": "rail_sj_rc6"
+    },
+    {
+      "id": "rail_er1",
+      "label": "Rail Er1",
+      "file": "Sverige Mälartåg ER1 111, Gävle IMG 6437.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Sverige_M%C3%A4lart%C3%A5g_ER1_111%2C_G%C3%A4vle_IMG_6437.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sverige%20M%C3%A4lart%C3%A5g%20ER1%20111%2C%20G%C3%A4vle%20IMG%206437.jpg?width=650",
+      "status": "approved",
+      "old_file": "Sverige Mälartåg ER1 111, Gävle IMG 6437.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Sverige_M%C3%A4lart%C3%A5g_ER1_111%2C_G%C3%A4vle_IMG_6437.jpg",
+      "photo_key": "rail_malartag"
+    },
+    {
+      "id": "rail_x3",
+      "label": "Rail X3",
+      "file": "Arlanda Express X3.JPG",
+      "url": "https://commons.wikimedia.org/wiki/File:Arlanda_Express_X3.JPG",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Arlanda%20Express%20X3.JPG?width=650",
+      "status": "approved",
+      "old_file": "Arlanda Express X3.JPG",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Arlanda_Express_X3.JPG",
+      "photo_key": "rail_arlanda"
+    },
+    {
+      "id": "rail_snall",
+      "label": "Snälltåget – Vectron-Lokomotive in Stockholm",
+      "file": "19.05.22 Lund Centralstation 193287 (52093971006).jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:19.05.22_Lund_Centralstation_193287_(52093971006).jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sn%C3%A4llt%C3%A5get%2002.jpg?width=650",
+      "status": "approved",
+      "old_file": "Snälltåget, Stockholms centralstation - 20260514 - 10.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:Sn%C3%A4llt%C3%A5get%2C_Stockholms_centralstation_-_20260514_-_10.jpg",
+      "photo_key": "rail_snalltaget"
+    },
+    {
+      "id": "rail_vrx74",
+      "label": "Rail Vrx74",
+      "file": "VR X74 1.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:VR_X74_1.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/VR%20X74%201.jpg?width=650",
+      "status": "approved",
+      "old_file": "VR X74 1.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:VR_X74_1.jpg",
+      "photo_key": "rail_vr_x74"
+    },
+    {
+      "id": "bus_blue",
+      "label": "Bus Blue",
+      "file": "SL bus line 2 at Norrmalmstorg.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_bus_line_2_at_Norrmalmstorg.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/SL%20bus%20line%202%20at%20Norrmalmstorg.jpg?width=650",
+      "status": "approved",
+      "old_file": "SL bus line 2 at Norrmalmstorg.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:SL_bus_line_2_at_Norrmalmstorg.jpg",
+      "photo_key": "bus_blue2"
+    },
+    {
+      "id": "bus_blue_articulated",
+      "label": "Bus Blue Articulated",
+      "file": "SL bus line 2 at Norrmalmstorg.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_bus_line_2_at_Norrmalmstorg.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/SL%20bus%20line%202%20at%20Norrmalmstorg.jpg?width=650",
+      "status": "approved",
+      "old_file": "SL bus line 2 at Norrmalmstorg.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:SL_bus_line_2_at_Norrmalmstorg.jpg",
+      "photo_key": "bus_blue2"
+    },
+    {
+      "id": "bus_red",
+      "label": "Bus Red",
+      "file": "SL bus line 69 at Norrmalmstorg.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_bus_line_69_at_Norrmalmstorg.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/SL%20bus%20line%2069%20at%20Norrmalmstorg.jpg?width=650",
+      "status": "approved",
+      "old_file": "SL bus line 69 at Norrmalmstorg.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:SL_bus_line_69_at_Norrmalmstorg.jpg",
+      "photo_key": "bus_red69"
+    },
+    {
+      "id": "bus_red_articulated",
+      "label": "Bus Red Articulated",
+      "file": "SL Buss 75, Stockholm - 20240430 - 14.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_Buss_75%2C_Stockholm_-_20240430_-_14.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/SL%20Buss%2075%2C%20Stockholm%20-%2020240430%20-%2014.jpg?width=650",
+      "status": "approved",
+      "old_file": "SL Buss 75, Stockholm - 20240430 - 14.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:SL_Buss_75%2C_Stockholm_-_20240430_-_14.jpg",
+      "photo_key": "bus_red75"
+    },
+    {
+      "id": "bus_regional",
+      "label": "Bus Regional",
+      "file": "SL Buss 75, Stockholm - 20240430 - 14.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_Buss_75%2C_Stockholm_-_20240430_-_14.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/SL%20Buss%2075%2C%20Stockholm%20-%2020240430%20-%2014.jpg?width=650",
+      "status": "approved",
+      "old_file": "SL Buss 75, Stockholm - 20240430 - 14.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:SL_Buss_75%2C_Stockholm_-_20240430_-_14.jpg",
+      "photo_key": "bus_red75"
+    },
+    {
+      "id": "bus_electric",
+      "label": "Bus Electric",
+      "file": "SL bus line 69 at Norrmalmstorg.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_bus_line_69_at_Norrmalmstorg.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/SL%20bus%20line%2069%20at%20Norrmalmstorg.jpg?width=650",
+      "status": "approved",
+      "old_file": "SL bus line 69 at Norrmalmstorg.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:SL_bus_line_69_at_Norrmalmstorg.jpg",
+      "photo_key": "bus_red69"
+    },
+    {
+      "id": "extra_commuter_x60_alt",
+      "label": "Extra Commuter X60 Alt",
+      "file": "SL X60, Stockholm Centralstation, 20240106 - 02.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_X60%2C_Stockholm_Centralstation%2C_20240106_-_02.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/SL%20X60%2C%20Stockholm%20Centralstation%2C%2020240106%20-%2002.jpg?width=650",
+      "status": "approved",
+      "old_file": "SL X60, Stockholm Centralstation, 20240106 - 02.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:SL_X60%2C_Stockholm_Centralstation%2C_20240106_-_02.jpg",
+      "photo_key": "commuter_x60_alt"
+    },
+    {
+      "id": "extra_local_x15p_alt",
+      "label": "Roslagsbanan – X15p bei Vallentuna",
+      "file": "Stockholms östra SL X15p - 20240420 - 01.jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:Stockholms_%C3%B6stra_SL_X15p_-_20240420_-_01.jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/X15P%20Vid%20Vallentuna.jpg?width=650",
+      "status": "approved",
+      "old_file": "X15p, Stockholms östra - 20250504 - 06.jpg",
+      "old_source": "https://commons.wikimedia.org/wiki/File:X15p%2C_Stockholms_%C3%B6stra_-_20250504_-_06.jpg",
+      "photo_key": "local_x15p_alt"
+    },
+    {
+      "id": "extra_rail_oresund",
+      "label": "Öresundståg X31 – am Bahnhof Alvesta",
+      "file": "18.05.22 Kristianstad X31K 4319+X31K 4402 (52094208294).jpg",
+      "url": "https://commons.wikimedia.org/wiki/File:18.05.22_Kristianstad_X31K_4319+X31K_4402_(52094208294).jpg",
+      "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Oeresundstag%20x31%20-%20alvesta%20station.jpg?width=650",
+      "status": "approved",
+      "old_file": "Öresundståg i östra Sölvesborg.JPG",
+      "old_source": "https://commons.wikimedia.org/wiki/File:%C3%96resundst%C3%A5g_i_%C3%B6stra_S%C3%B6lvesborg.JPG",
+      "photo_key": "rail_oresund"
+    }
+  ],
+  "photos": {
+    "metro_c20_blue": {
+      "title": "Kungsträdgården Metro, SL C20, 20240525 - 25.jpg",
+      "label": "Tunnelbana C20 – an der Station Kungsträdgården",
+      "url": "https://commons.wikimedia.org/wiki/File:Kungstr%C3%A4dg%C3%A5rden_Metro,_SL_C20,_20240525_-_25.jpg",
+      "groups": [
+        "metro_10",
+        "metro_11"
+      ]
+    },
+    "metro_c30": {
+      "title": "Stockholm metro - SL C30 (1).jpg",
+      "label": "Metro 14",
+      "url": "https://commons.wikimedia.org/wiki/File:Stockholm_metro_-_SL_C30_(1).jpg",
+      "groups": [
+        "metro_13",
+        "metro_14"
+      ]
+    },
+    "metro_c20_green": {
+      "title": "SL C20 Gamla Stan, Stockholm.jpg",
+      "label": "Tunnelbana C20 – Außenaufnahme",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_C20_Gamla_Stan,_Stockholm.jpg",
+      "groups": [
+        "metro_17",
+        "metro_18",
+        "metro_19"
+      ]
+    },
+    "commuter_x60": {
+      "title": "SL X60, Stockholm Centralstation, 20240106 - 06.jpg",
+      "label": "Commuter X60",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_X60%2C_Stockholm_Centralstation%2C_20240106_-_06.jpg",
+      "groups": [
+        "commuter_x60"
+      ]
+    },
+    "tram_city7": {
+      "title": "A35 på Spårväg City.jpg",
+      "label": "Spårväg City – A35 auf Linie 7",
+      "url": "https://commons.wikimedia.org/wiki/File:A35_p%C3%A5_Sp%C3%A5rv%C3%A4g_City.jpg",
+      "groups": [
+        "tram_city7"
+      ]
+    },
+    "tram_nockeby12": {
+      "title": "2024-07-23 3248 SL A32 427 på linje 12 i Alvik.jpg",
+      "label": "Nockebybanan – A32 auf Linie 12",
+      "url": "https://commons.wikimedia.org/wiki/File:2024-07-23_3248_SL_A32_427_p%C3%A5_linje_12_i_Alvik.jpg",
+      "groups": [
+        "tram_nockeby12"
+      ]
+    },
+    "tram_a35": {
+      "title": "2015-08-29 1726 SL A35 463 mellan Ulvsundabron och Tranebergstunneln.jpg",
+      "label": "Tram Tvar30",
+      "url": "https://commons.wikimedia.org/wiki/File:2015-08-29_1726_SL_A35_463_mellan_Ulvsundabron_och_Tranebergstunneln.jpg",
+      "groups": [
+        "tram_lidingo21",
+        "tram_tvar30"
+      ]
+    },
+    "local_saltsjo": {
+      "title": "Saltsjöbanan at Saltsjöbaden station.jpg",
+      "label": "Local Saltsjo",
+      "url": "https://commons.wikimedia.org/wiki/File:Saltsj%C3%B6banan_at_Saltsj%C3%B6baden_station.jpg",
+      "groups": [
+        "local_saltsjo"
+      ]
+    },
+    "local_x15p": {
+      "title": "X15p vid Visinge station.jpg",
+      "label": "Local Roslag",
+      "url": "https://commons.wikimedia.org/wiki/File:X15p_vid_Visinge_station.jpg",
+      "groups": [
+        "local_roslag"
+      ]
+    },
+    "ferry_djurgarden10": {
+      "title": "Djurgården 10.jpg",
+      "label": "Ferry 89",
+      "url": "https://commons.wikimedia.org/wiki/File:Djurg%C3%A5rden_10.jpg",
+      "groups": [
+        "ferry_80",
+        "ferry_82",
+        "ferry_89"
+      ]
+    },
+    "ferry_84": {
+      "title": "Eskil November 2024 01.jpg",
+      "label": "Ferry 84",
+      "url": "https://commons.wikimedia.org/wiki/File:Eskil_November_2024_01.jpg",
+      "groups": [
+        "ferry_84"
+      ]
+    },
+    "rail_x2000": {
+      "title": "X2000 I Malmö Mot Stockholm.jpg",
+      "label": "SJ X2000 – Zug in Malmö",
+      "url": "https://commons.wikimedia.org/wiki/File:X2000_I_Malm%C3%B6_Mot_Stockholm.jpg",
+      "groups": [
+        "rail_x2000"
+      ]
+    },
+    "rail_sj3000": {
+      "title": "Stockholm Central, SJ 3000 - 20260327 - 03.jpg",
+      "label": "Rail X55",
+      "url": "https://commons.wikimedia.org/wiki/File:Stockholm_Central%2C_SJ_3000_-_20260327_-_03.jpg",
+      "groups": [
+        "rail_x55"
+      ]
+    },
+    "rail_sj_x40": {
+      "title": "SJ X40, Köping - 20260513 - 01.jpg",
+      "label": "SJ X40 – Regionalzug in Köping",
+      "url": "https://commons.wikimedia.org/wiki/File:SJ_X40,_K%C3%B6ping_-_20260513_-_01.jpg",
+      "groups": [
+        "rail_x40"
+      ]
+    },
+    "rail_sj_rc6": {
+      "title": "SJ Rc 1383 Stockholm Central.jpg",
+      "label": "Rail Rc6",
+      "url": "https://commons.wikimedia.org/wiki/File:SJ_Rc_1383_Stockholm_Central.jpg",
+      "groups": [
+        "rail_rc6"
+      ]
+    },
+    "rail_malartag": {
+      "title": "Sverige Mälartåg ER1 111, Gävle IMG 6437.jpg",
+      "label": "Rail Er1",
+      "url": "https://commons.wikimedia.org/wiki/File:Sverige_M%C3%A4lart%C3%A5g_ER1_111%2C_G%C3%A4vle_IMG_6437.jpg",
+      "groups": [
+        "rail_er1"
+      ]
+    },
+    "rail_arlanda": {
+      "title": "Arlanda Express X3.JPG",
+      "label": "Rail X3",
+      "url": "https://commons.wikimedia.org/wiki/File:Arlanda_Express_X3.JPG",
+      "groups": [
+        "rail_x3"
+      ]
+    },
+    "rail_snalltaget": {
+      "title": "19.05.22 Lund Centralstation 193287 (52093971006).jpg",
+      "label": "Snälltåget – Vectron-Lokomotive in Stockholm",
+      "url": "https://commons.wikimedia.org/wiki/File:19.05.22_Lund_Centralstation_193287_(52093971006).jpg",
+      "groups": [
+        "rail_snall"
+      ]
+    },
+    "rail_vr_x74": {
+      "title": "VR X74 1.jpg",
+      "label": "Rail Vrx74",
+      "url": "https://commons.wikimedia.org/wiki/File:VR_X74_1.jpg",
+      "groups": [
+        "rail_vrx74"
+      ]
+    },
+    "bus_blue2": {
+      "title": "SL bus line 2 at Norrmalmstorg.jpg",
+      "label": "Bus Blue Articulated",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_bus_line_2_at_Norrmalmstorg.jpg",
+      "groups": [
+        "bus_blue",
+        "bus_blue_articulated"
+      ]
+    },
+    "bus_red69": {
+      "title": "SL bus line 69 at Norrmalmstorg.jpg",
+      "label": "Bus Electric",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_bus_line_69_at_Norrmalmstorg.jpg",
+      "groups": [
+        "bus_red",
+        "bus_electric"
+      ]
+    },
+    "bus_red75": {
+      "title": "SL Buss 75, Stockholm - 20240430 - 14.jpg",
+      "label": "Bus Regional",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_Buss_75%2C_Stockholm_-_20240430_-_14.jpg",
+      "groups": [
+        "bus_red_articulated",
+        "bus_regional"
+      ]
+    },
+    "commuter_x60_alt": {
+      "title": "SL X60, Stockholm Centralstation, 20240106 - 02.jpg",
+      "label": "Extra Commuter X60 Alt",
+      "url": "https://commons.wikimedia.org/wiki/File:SL_X60%2C_Stockholm_Centralstation%2C_20240106_-_02.jpg",
+      "groups": [
+        "extra_commuter_x60_alt"
+      ]
+    },
+    "local_x15p_alt": {
+      "title": "Stockholms östra SL X15p - 20240420 - 01.jpg",
+      "label": "Roslagsbanan – X15p bei Vallentuna",
+      "url": "https://commons.wikimedia.org/wiki/File:Stockholms_%C3%B6stra_SL_X15p_-_20240420_-_01.jpg",
+      "groups": [
+        "extra_local_x15p_alt"
+      ]
+    },
+    "rail_oresund": {
+      "title": "18.05.22 Kristianstad X31K 4319+X31K 4402 (52094208294).jpg",
+      "label": "Öresundståg X31 – am Bahnhof Alvesta",
+      "url": "https://commons.wikimedia.org/wiki/File:18.05.22_Kristianstad_X31K_4319+X31K_4402_(52094208294).jpg",
+      "groups": [
+        "extra_rail_oresund"
+      ]
+    }
+  },
+  "note": "User approved 35 groups. Originals are not embedded; GitHub one-time importer fetches exact files."
+}

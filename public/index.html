@@ -270,9 +270,9 @@ function photoCandidates(v){
  const line=String(v.info?.[0]||'').trim();
  const name=(line+' '+(v.info?.[1]||'')+' '+(v.head||'')+' '+(v.info?.[4]||'')).toLocaleLowerCase('sv-SE');
  const agency=String(v.info?.[4]||'').toLocaleLowerCase('sv-SE');
- if(v.mode==='metro')return ['13','14'].includes(line)?['metro_c30','metro_c20']:['metro_c20','metro_c30'];
+ if(v.mode==='metro')return ['13','14'].includes(line)?['metro_c30']:['10','11'].includes(line)?['metro_c20_blue']:['17','18','19'].includes(line)?['metro_c20_green']:['metro_c20_green','metro_c20_blue'];
  if(v.mode==='commuter')return ['commuter_x60','commuter_x60_alt'];
- if(v.mode==='tram')return ['tram_a35','tram_a32'];
+ if(v.mode==='tram')return line==='7'?['tram_city7']:line==='12'?['tram_nockeby12']:['tram_a35','tram_a32'];
  if(v.mode==='localrail'){
    if(['25','26'].includes(line)||name.includes('saltsjö'))return ['local_saltsjo'];
    if(['27','28','29'].includes(line)||name.includes('roslags'))return ['local_x15p','local_x15p_alt'];
@@ -288,7 +288,7 @@ function photoCandidates(v){
    if(name.includes('x40')||name.includes('dubbeldäck'))return ['rail_sj_x40'];
    if(name.includes('x2000')||name.includes('sj snabbtåg'))return ['rail_x2000'];
    if(name.includes('intercity')||name.includes('nattåg')||name.includes('rc6'))return ['rail_sj_rc6'];
-   if(agency.includes('sj'))return ['rail_sj_rc6','rail_x2000']; // SJ generic only; train type unknown.
+   if(agency.includes('sj'))return []; // Do not guess SJ train model.
    return [];
  }
  if(v.mode==='ferry'){
@@ -298,7 +298,7 @@ function photoCandidates(v){
  }
  if(v.mode==='bus'){
    if(!agency.includes('storstockholm')&&!agency.includes('sl '))return []; // No false SL photo for UL/Flixbus/Vy.
-   if(['1','2','3','4','6'].includes(line))return ['bus_blue2','bus_red69'];
+   if(['1','2','3','4','6'].includes(line))return ['bus_blue2'];
    if(line==='69')return ['bus_red69','bus_red75'];
    if(line==='75')return ['bus_red75','bus_red69'];
    return ['bus_red69','bus_red75'];
@@ -310,10 +310,10 @@ function showImage(v){
  const image=$('photoImg');image.hidden=true;image.removeAttribute('src');
  $('photo').style.display='block';$('photoCredit').hidden=true;
  photoFallbackFor(v.mode,v);$('photoNote').textContent='Illustration · fordonstyp inte verifierad';
- const candidates=photoCandidates(v).filter(k=>photoCatalog[k]);
+ const candidates=photoCandidates(v).filter(k=>photoCatalog[k] && typeof photoCatalog[k].path==='string');
  function tryPhoto(i){
    if(token!==photoRequest||selected!==v)return;
-   if(i>=candidates.length){$('photoNote').textContent='Illustration · foto saknas';return;}
+   if(i>=candidates.length){$('photoNote').textContent='Fordonssymbol · inget lokalt foto för denna fordonstyp';$('photoCredit').hidden=true;return;}
    const item=photoCatalog[candidates[i]],probe=new Image();
    probe.onload=()=>{if(token!==photoRequest||selected!==v)return;
      image.src=item.path;image.hidden=false;$('photoFallback').style.display='none';
@@ -321,7 +321,7 @@ function showImage(v){
      if(item.source){$('photoCredit').hidden=false;$('photoCredit').href=item.source;
        $('photoCredit').textContent=((item.author||'Fotograf')+' · '+(item.license||'Bildkälla')).slice(0,90)+' ↗';}
    };
-   probe.onerror=()=>tryPhoto(i+1);
+   probe.onerror=()=>{console.warn('Local image unreadable:',candidates[i],item.path);tryPhoto(i+1);};
    probe.src=item.path;
  }
  tryPhoto(0);
