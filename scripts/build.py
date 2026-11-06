@@ -7,7 +7,7 @@ V4 goals:
 - expand long-distance rail coverage across Sweden / south to Copenhagen corridor
 - preserve shapes for rail so trains like Arlanda Express follow actual track geometry more often
 """
-import csv, datetime as dt, io, json, os, re, sys, urllib.request, urllib.parse, zipfile, collections, math, pathlib, time, gzip, zlib
+import csv, datetime as dt, io, json, os, re, sys, urllib.request, urllib.parse, urllib.error, zipfile, collections, math, pathlib, time, gzip, zlib
 from zoneinfo import ZoneInfo
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -56,8 +56,20 @@ def fetch_feed(name, key, url):
                 raise ValueError('Feed response is not a ZIP file')
             print('Read', name, len(data) // 1024 // 1024, 'MiB', flush=True)
             return zipfile.ZipFile(io.BytesIO(data))
+        except urllib.error.HTTPError as exc:
+            # HTTP 429 is a rate limit, NOT an invalid API key. Retrying three
+            # times within a few seconds only makes it worse.
+            if exc.code == 429:
+                wait = exc.headers.get('Retry-After', 'not provided') if exc.headers else 'not provided'
+                print(f'RATE LIMITED: {name} HTTP 429; Retry-After: {wait}. '
+                      'Do not start repeated manual builds; wait for the quota to recover.', flush=True)
+                return None
+            print('Feed failure:', name, type(exc).__name__,
+                  str(exc).replace(key, '[REDACTED]')[:260], flush=True)
         except Exception as exc:
-            print('Feed failure:', name, type(exc).__name__, str(exc).replace(key, '[REDACTED]')[:260], flush=True)
+            print('Feed failure:', name, type(exc).__name__,
+                  str(exc).replace(key, '[REDACTED]')[:260], flush=True)
+        if attempt < 2:
             time.sleep(attempt * 2 + 1)
     return None
 
@@ -320,9 +332,11 @@ def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, 
         if trip_key in seen_trips:
             continue
         seen_trips.add(trip_key)
-        item = [route, head, shape_map.get(shape, -1), clean]
+        # IMPORTANT: one fresh mutable trip per day. A shared item would be
+        # reindexed multiple times during network compaction (KeyError).
         for d in dates:
-            per_day[d].append(item)
+            per_day[d].append([route, head, shape_map.get(shape, -1),
+                               [stop.copy() for stop in clean]])
             added += 1
     print('Completed', label, 'items added', added, flush=True)
     # O(trips) diagnostics (avoid scanning all route definitions for each trip).
@@ -348,6 +362,12 @@ def main():
     for label, key, url in feeds:
         z = fetch_feed(label, key, url)
         if not z:
+            if label == 'SL':
+                # Never deploy a "Stockholm" site without SL; this would
+                # silently remove all metro, local buses and commuter trains.
+                print('ERROR: SL dataset unavailable. Existing GitHub Pages release '
+                      'is unchanged. Retry after Trafiklab quota recovers.', file=sys.stderr)
+                return 2
             continue
         try:
             process_feed(z, label, global_routes, global_stops, global_shapes, per_day, seen)
@@ -397,11 +417,19 @@ def main():
     routes=[routes[old] for old in sorted(used_routes)]
     stops=[stops[old] for old in sorted(used_stops)]
     shapes=[shapes[old] for old in sorted(used_shapes)]
+    # Defensive identity de-duplication: even if optional route enrichment
+    # shared an object across days, transform each actual object only once.
+    reindexed_items = set()
     for trips in per_day.values():
         for item in trips:
-            item[0]=route_ids[item[0]]
-            item[2]=shape_ids.get(item[2],-1)
-            for st in item[3]:st[0]=stop_ids[st[0]]
+            identity = id(item)
+            if identity in reindexed_items:
+                continue
+            reindexed_items.add(identity)
+            item[0] = route_ids[item[0]]
+            item[2] = shape_ids.get(item[2], -1)
+            for stop in item[3]:
+                stop[0] = stop_ids[stop[0]]
     print('PUBLISHED NETWORK:',len(routes),'routes,',len(stops),'stops,',len(shapes),'shapes',flush=True)
 
     meta = {
