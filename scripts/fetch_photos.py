@@ -118,9 +118,38 @@ def download_one(key, title, caption):
             'commons_title': title, 'bytes': len(data)}
 
 
+def reusable_photo(previous, key):
+    item = previous.get(key)
+    if not isinstance(item, dict) or not item.get('source') or not item.get('license'):
+        return None
+    rel = item.get('path', '')
+    path = ROOT / rel
+    if not rel.startswith('assets/photos/') or not path.is_file():
+        # Published paths are relative to public/, not repository root.
+        path = ROOT / 'public' / rel
+    try:
+        with path.open('rb') as handle:
+            header = handle.read(12)
+        if path.stat().st_size < 2000 or not (header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG\r\n\x1a\n') or header.startswith(b'RIFF')):
+            return None
+    except OSError:
+        return None
+    return item
+
+
 def generate():
+    catalog_path = OUT / 'catalog.json'
+    try:
+        previous = json.loads(catalog_path.read_text())
+    except (ValueError, OSError):
+        previous = {}
     index, failures = {}, {}
     for key, (title, caption) in CATALOG.items():
+        cached = reusable_photo(previous, key)
+        if cached is not None:
+            index[key] = cached
+            print('PHOTO REUSED:', key, flush=True)
+            continue
         titles = list(dict.fromkeys([title] + ALTERNATES.get(key, [])))
         errors = []
         for candidate in titles:
