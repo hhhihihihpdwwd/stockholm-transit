@@ -158,11 +158,11 @@ def time_sec(s):
 
 
 def stop_allowed(mode, stock):
-    return stock['in_national'] if mode == 'rail' else stock['in_stockholm']
+    return stock['in_national'] if mode in ('rail', 'commuter') else stock['in_stockholm']
 
 
 def shape_clip_bbox(mode):
-    return NATIONAL_BBOX if mode == 'rail' else STOCKHOLM_BBOX
+    return NATIONAL_BBOX if mode in ('rail', 'commuter') else STOCKHOLM_BBOX
 
 
 def process_feed(z, label, global_routes, global_stops, global_shapes, per_day, seen_trips):
@@ -438,7 +438,7 @@ def main():
     for d, items in per_day.items():
         retained=[]
         for item in items:
-            if mode_by_route[item[0]]=='rail':
+            if mode_by_route[item[0]] in {'rail','commuter'}:
                 rail_seen+=1
                 # Keep the *entire* journey to its far-away destination if it
                 # visits any station in the greater Stockholm area.
@@ -447,7 +447,7 @@ def main():
                 rail_kept+=1
             retained.append(item)
         per_day[d]=retained
-    print('STOCKHOLM FILTER: retained intercity rail',rail_kept,'/',rail_seen,'dated trips',flush=True)
+    print('STOCKHOLM FILTER: retained national rail/commuter',rail_kept,'/',rail_seen,'dated trips',flush=True)
     fill_simulation_gaps(per_day,global_routes)
 
     # One Stockholm PBF extract, streamed to disk, parsed locally. This avoids
@@ -455,23 +455,15 @@ def main():
     from osm_extract import enrich as enrich_pbf
     tunnel_shapes=enrich_pbf(global_routes,global_stops,global_shapes,per_day)
 
-    # Long-distance trains often lack GTFS shapes, and the Stockholm extract
-    # cannot contain their distant track network. For those trains ONLY, create
-    # an explicitly ESTIMATED corridor through their real scheduled stations.
-    # Never use this for buses, metro, trams or commuter/local trains.
-    approx_count=0
-    for d, trips in per_day.items():
+    # V9: do NOT create straight lines through stations for unrouted trains.
+    # National railway geometry is sourced from the all-Sweden OSM track graph.
+    # Any failure remains visible in diagnostics rather than masquerading as a
+    # verified or geographically plausible railroad.
+    missing_routes=collections.Counter()
+    for trips in per_day.values():
         for item in trips:
-            if item[2]>=0 or mode_by_route[item[0]]!='rail':continue
-            stations=[stop_by_id[row[0]] for row in item[3]]
-            if len(stations)<2:continue
-            if not any(hav(loc,centre)>33000 for loc in stations):continue
-            geometry=tuple((round(lat,5),round(lon,5)) for lat,lon in stations)
-            if len(set(geometry))<2:continue
-            item[2]=global_shapes.setdefault(geometry,len(global_shapes))
-            if len(item)<7:item.append('estimated-corridor')
-            approx_count+=1
-    print('ESTIMATED DISTANT RAIL CORRIDORS (not exact track geometry):',approx_count,flush=True)
+            if item[2]<0:missing_routes[mode_by_route[item[0]]]+=1
+    print('V9 UNROUTED TRIPS (held at stop, no fake geography):',dict(missing_routes),flush=True)
 
     routes = [None] * len(global_routes)
     for (agency, short, long, mode, color), i in global_routes.items():
@@ -485,7 +477,7 @@ def main():
     for coords, i in global_shapes.items():
         shapes[i] = coords
 
-    # Compact the published network to the 3 days actually displayed. Sweden 3
+    # Compact the published network to the actual representative seven days. Sweden 3
     # contains many inactive routes/stops; never ship those unused tables to a phone.
     used_routes = set()
     used_stops = set()
@@ -521,6 +513,28 @@ def main():
             mode=routes[item[0]][2];all_counts[mode]+=1
             if item[2]>=0:geo_counts[mode]+=1
     print('REAL ROAD/RAIL GEOMETRY COVERAGE:',{k:f'{geo_counts[k]}/{v} ({geo_counts[k]/v:.1%})' for k,v in all_counts.items()},flush=True)
+    # Auditable PER-LINE result. This is the source of truth for whether
+    # "all routes" actually mapped; nobody should need to guess from the UI.
+    by_line=collections.defaultdict(lambda: {'total':0,'mapped':0,'unmapped_examples':[]})
+    for trips in per_day.values():
+        for item in trips:
+            route=routes[item[0]]
+            key=(route[2],route[0],route[4])
+            entry=by_line[key]
+            entry['total']+=1
+            if item[2]>=0:entry['mapped']+=1
+            elif len(entry['unmapped_examples'])<3:
+                entry['unmapped_examples'].append(stops[item[3][0][0]][2]+' → '+stops[item[3][-1][0]][2])
+    line_report=[{'mode':mode,'line':line,'operator':operator,**values,
+                  'percent':round(100*values['mapped']/values['total'],1)}
+                 for (mode,line,operator),values in sorted(by_line.items())]
+    (OUT/'route-coverage.json').write_text(json.dumps({
+        'description':'Each archived departure is counted across seven days; mapped means aligned to an OSM network shape, not verified actual train movements.',
+        'total_lines':len(line_report), 'lines':line_report},ensure_ascii=False,separators=(',',':')))
+    print('ROUTE COVERAGE FILE: public/data/route-coverage.json,',len(line_report),'line/operator groups',flush=True)
+    worst=sorted((l for l in line_report if l['total']>=10),key=lambda x:x['percent'])[:20]
+    print('20 WORST LINE COVERAGES:',[(l['mode'],l['line'],l['percent']) for l in worst],flush=True)
+
 
     meta = {
         'source': used,

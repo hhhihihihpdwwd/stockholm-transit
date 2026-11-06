@@ -58,10 +58,33 @@ def fetch_elements(bbox, kind):
 
 
 class Graph:
+    """Topology-aware A* routing on verified OSM road or rail segments.
+
+    Several candidate tracks per station are considered. Component matching
+    prevents a wrong nearby but isolated track from shadowing a valid track.
+    """
     def __init__(self):
-        self.points={};self.edges=collections.defaultdict(list);self.grid=collections.defaultdict(list)
+        self.points={}
+        self.edges=collections.defaultdict(list)
+        self.grid=collections.defaultdict(list)
+        self.parent={}
+        self._snap_cache={}
+        self._path_cache={}
+
+    def root(self, x):
+        p=self.parent
+        while p[x]!=x:
+            p[x]=p[p[x]]
+            x=p[x]
+        return x
+
+    def union(self,a,b):
+        a=self.root(a);b=self.root(b)
+        if a!=b:self.parent[b]=a
+
     def add_elements(self, elements, mode):
         count=0
+        self._snap_cache.clear();self._path_cache.clear()
         for way in elements:
             if way.get('type')!='way':continue
             tags=way.get('tags') or {}
@@ -74,59 +97,91 @@ class Graph:
             for nid,coord in zip(nodes,geom):
                 if 'lat' not in coord or 'lon' not in coord:continue
                 if nid not in self.points:
-                    p=(float(coord['lat']),float(coord['lon']))
-                    self.points[nid]=p
-                    self.grid[(int(p[0]*250),int(p[1]*250))].append(nid)
-            underground = tags.get('tunnel') in {'yes','true','1','building_passage'} or tags.get('layer') in {'-1','-2','-3','-4'}
+                    point=(float(coord['lat']),float(coord['lon']))
+                    self.points[nid]=point
+                    self.parent[nid]=nid
+                    self.grid[(int(point[0]*250),int(point[1]*250))].append(nid)
+            underground=tags.get('tunnel') in {'yes','true','1','building_passage'} or tags.get('layer') in {'-1','-2','-3','-4'}
             for a,b in zip(nodes,nodes[1:]):
                 if a not in self.points or b not in self.points:continue
                 length=hav(self.points[a],self.points[b])
-                if 0.25<length<1700:
+                if 0.25<length<2500:
                     self.edges[a].append((b,length,underground))
                     self.edges[b].append((a,length,underground))
+                    self.union(a,b)
                     count+=1
         return count
-    def nearby(self, point, limit):
+
+    def nearby(self, point, limit, max_nodes=32):
+        key=(round(point[0],6),round(point[1],6),limit,max_nodes)
+        if key in self._snap_cache:return self._snap_cache[key]
         cy=int(point[0]*250);cx=int(point[1]*250)
+        lat_cells=math.ceil(limit/444)+1
+        lon_cells=math.ceil(limit/(444*max(.1,math.cos(math.radians(point[0])))))+1
         found=[]
-        for i in range(cy-3,cy+4):
-            for j in range(cx-3,cx+4):
+        for i in range(cy-lat_cells,cy+lat_cells+1):
+            for j in range(cx-lon_cells,cx+lon_cells+1):
                 for nid in self.grid.get((i,j),()):
                     d=hav(self.points[nid],point)
-                    if d<limit:found.append((d,nid))
+                    if d<limit and nid in self.edges:found.append((d,nid))
         found.sort()
-        # Several railway tracks at a station; keep alternatives in case nearest disconnected.
-        if not found:return []
-        baseline=found[0][0]
-        return [(d,n) for d,n in found[:10] if d<baseline+35]
-    def route(self, p, q, mode):
+        # 35 metres was too restrictive with parallel tracks and stations.
+        # Several nearby *connected components* must be represented.
+        selected=[];seen_components=collections.Counter()
+        for d,n in found:
+            comp=self.root(n)
+            if seen_components[comp]>=8:continue
+            if found and d>found[0][0]+min(450,limit*.8) and selected:break
+            selected.append((d,n))
+            seen_components[comp]+=1
+            if len(selected)>=max_nodes:break
+        self._snap_cache[key]=selected
+        return selected
+
+    def route(self,p,q,mode):
         direct=hav(p,q)
-        if direct<65:return None
-        max_snap=500 if mode=='bus' else (1100 if mode=='ferry' else 650)
+        if direct<15:return None
+        cache_key=(round(p[0],6),round(p[1],6),round(q[0],6),round(q[1],6),mode)
+        if cache_key in self._path_cache:return self._path_cache[cache_key]
+        max_snap=300 if mode=='bus' else (1000 if mode=='ferry' else 400)
         starts=self.nearby(p,max_snap)
         ends=self.nearby(q,max_snap)
         if not starts or not ends:return None
-        targets={nid:d for d,nid in ends}
-        # A* with a geographic lower bound, instead of Dijkstra's broad
-        # exploration of the entire Stockholm road network for every stop pair.
+        # Keep station-specific candidates: an overly broad snap radius can
+        # otherwise select the very same node for both adjacent stations.
+        tolerance=min(125,max(40,direct*.25))
+        starts=[x for x in starts if x[0]<=starts[0][0]+tolerance]
+        ends=[x for x in ends if x[0]<=ends[0][0]+tolerance]
+        by_component=collections.defaultdict(list)
+        for d,n in ends:by_component[self.root(n)].append((d,n))
+        starts=[(d,n) for d,n in starts if self.root(n) in by_component]
+        if not starts:return None
+        ends=[(d,n) for d,n in ends if self.root(n) in {self.root(x) for _,x in starts}]
+        if not ends:return None
+        targets={n:d for d,n in ends}
+        # A* where both station-to-rail offsets are part of the cost.
+        # A finite detour allowance protects against accidentally routing
+        # via a disconnected remote corridor or around a wrong bay.
+        maxlen=max(2000,direct*(4.2 if mode=='bus' else 3.6)+1500)
         heap=[];costs={};prev={};tunnel={}
-        target_coord=q
-        for dist,nid in starts:
-            costs[nid]=dist
-            heapq.heappush(heap,(dist+hav(self.points[nid],target_coord),dist,nid))
-        maxlen=max(1500,direct*(3.5 if mode=='bus' else 2.4)+900)
-        destination=None
+        for d,n in starts:
+            if d<costs.get(n,math.inf):
+                costs[n]=d
+                heapq.heappush(heap,(d+hav(self.points[n],q),d,n))
+        destination=None;best_score=math.inf
         while heap:
-            _,cost,node=heapq.heappop(heap)
+            lower,cost,node=heapq.heappop(heap)
             if cost!=costs.get(node):continue
             if cost>maxlen:continue
+            if lower>best_score:break
             if node in targets:
-                destination=node;break
+                score=cost+targets[node]
+                if score<best_score:best_score=score;destination=node
             for nxt,edge,under in self.edges.get(node,()):
                 alt=cost+edge
                 if alt<costs.get(nxt,math.inf) and alt<=maxlen:
                     costs[nxt]=alt;prev[nxt]=node;tunnel[nxt]=under
-                    heapq.heappush(heap,(alt+hav(self.points[nxt],target_coord),alt,nxt))
+                    heapq.heappush(heap,(alt+hav(self.points[nxt],q),alt,nxt))
         if destination is None:return None
         ids=[];node=destination
         while node in prev:
@@ -135,10 +190,12 @@ class Graph:
         if len(ids)<2:return None
         coords=[self.points[x] for x in ids]
         length=sum(hav(a,b) for a,b in zip(coords,coords[1:]))
-        if length>maxlen or length<direct*.6:return None
+        if length>maxlen or length<direct*.55:return None
         underground=[bool(tunnel.get(x,False)) for x in ids]
-        return coords,underground
-
+        result=(coords,underground)
+        if len(self._path_cache)>20000:self._path_cache.clear()
+        self._path_cache[cache_key]=result
+        return result
 
 def assemble(graph, stops, mode):
     all_points=[];flags=[]
