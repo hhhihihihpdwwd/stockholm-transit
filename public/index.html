@@ -96,7 +96,7 @@ function geomAt(shape,cum,d){if(!shape?.length)return null;if(d<=0)return shape[
 function pathBetween(shape,cum,a,b){if(!shape?.length)return [];const out=[geomAt(shape,cum,a)];for(let i=1;i<cum.length-1;i++)if(cum[i]>a&&cum[i]<b)out.push(shape[i]);out.push(geomAt(shape,cum,b));return out}
 const geometryCache=new Map();
 function buildTrip(item,i,day){const [route,head,shapeId,stops]=item;if(stops.length<2||route>=net.routes.length)return null;const routeInfo=net.routes[route],geometry=net.shapes[shapeId]||null;const coords=stops.map(s=>net.stops[s[0]]);if(coords.some(x=>!x))return null;const shape=geometry?.length>1?geometry:null;let cum=null,anchors=null;
-if(shape){const cacheKey=shapeId+':'+stops.map(s=>s[0]).join(',');let cached=geometryCache.get(cacheKey);if(cached===undefined){let path=cumGeom(shape),indices=[],last=0,valid=true;for(const stop of coords){const projection=projectPoint(shape,stop,last);if(projection.d>420){valid=false;break}indices.push(projection.dist);last=projection.dist}cached=(valid&&indices.at(-1)-indices[0]>50)?[path,indices]:null;geometryCache.set(cacheKey,cached)}if(cached){cum=cached[0];anchors=cached[1]}}
+if(shape){const cacheKey=shapeId+':'+stops.map(s=>s[0]).join(',');let cached=geometryCache.get(cacheKey);if(cached===undefined){let path=cumGeom(shape),indices=[],last=0,valid=true;for(const stop of coords){const projection=projectPoint(shape,stop,last);if(projection.d>(routeInfo[2]==='rail'?950:routeInfo[2]==='bus'?540:650)){valid=false;break}indices.push(projection.dist);last=projection.dist}cached=(valid&&indices.at(-1)-indices[0]>50)?[path,indices]:null;geometryCache.set(cacheKey,cached)}if(cached){cum=cached[0];anchors=cached[1]}}
 // Shape missing/inconsistent: use stop coordinates ONLY for endpoint display, never draw a fabricated street route.
 return {id:day+':'+i,route,info:routeInfo,head,stops,coords,shape:anchors?shape:null,cum,anchors,mode:routeInfo[2],shapeId,modelled:item[4]==='modelled',trainNo:item[5]||'',estimated:item[6]==='estimated-corridor',undergroundIds:new Set(net.tunnels?.[shapeId]||[]),start:stops[0][1],end:stops.at(-1)[2],day};}
 function updateActive(now){if(!net)return;const list=[];for(const [day,trips] of Object.entries(schedules)){const offset=day===now.date?0:(day<now.date?86400:-86400);const t=now.seconds+offset;for(let i=0;i<trips.length;i++){const trip=trips[i];if(t<trip[0]-90||t>trip[1]+75)continue;const key=day+':'+i;let v=displayCached.get(key);if(!v){v=buildTrip(trip[2],i,day);if(v){displayCached.set(key,v)}}if(v&&enabled.has(v.mode))list.push({v,t})}}
@@ -288,7 +288,7 @@ function photoCandidates(v){
    if(name.includes('x40')||name.includes('dubbeldäck'))return ['rail_sj_x40'];
    if(name.includes('x2000')||name.includes('sj snabbtåg'))return ['rail_x2000'];
    if(name.includes('intercity')||name.includes('nattåg')||name.includes('rc6'))return ['rail_sj_rc6'];
-   if(agency.includes('sj'))return ['rail_x2000','rail_sj_rc6']; // Operator known, type uncertain.
+   if(agency.includes('sj'))return ['rail_sj_rc6','rail_x2000']; // SJ generic only; train type unknown.
    return [];
  }
  if(v.mode==='ferry'){
@@ -297,7 +297,8 @@ function photoCandidates(v){
    return []; // Never substitute Djurgårdsfärjan for another boat line.
  }
  if(v.mode==='bus'){
-   if(['1','2','3','4','6'].includes(line))return ['bus_blue2'];
+   if(!agency.includes('storstockholm')&&!agency.includes('sl '))return []; // No false SL photo for UL/Flixbus/Vy.
+   if(['1','2','3','4','6'].includes(line))return ['bus_blue2','bus_red69'];
    if(line==='69')return ['bus_red69','bus_red75'];
    if(line==='75')return ['bus_red75','bus_red69'];
    return ['bus_red69','bus_red75'];
