@@ -59,8 +59,8 @@ class LocalGraphTests(unittest.TestCase):
         self.assertTrue(graphs['rail'].edges)
 
     def test_pbf_is_explicit_fixed_provider(self):
-        from osm_extract import download_pbf
-        with self.assertRaises(ValueError):download_pbf('https://evil.test/data.osm.pbf')
+        from osm_extract import download_sweden
+        with self.assertRaises(ValueError):download_sweden('https://evil.test/data.osm.pbf')
 
 class BuildTests(unittest.TestCase):
     def test_gtfs_archive_reading_for_metro_bus_train(self):
