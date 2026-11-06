@@ -28,6 +28,13 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq osmium-tool
           python -m pip install --disable-pip-version-check osmium
+      - name: Restore previously downloaded attributed photos
+        uses: actions/cache/restore@v4
+        with:
+          path: public/assets/photos
+          key: stockholm-photos-${{ github.run_id }}
+          restore-keys: |
+            stockholm-photos-
       - name: Generate national railway geometry and Stockholm street timetable
         env:
           GTFS_ARCHIVE_URL: https://data.samtrafiken.se/trafiklab/gtfs-sverige-2/2026/11/sweden-20261104.zip
@@ -35,6 +42,22 @@ jobs:
           OSM_GEOMETRY: '1'
           SWEDEN_OSM_URL: https://download.geofabrik.de/europe/sweden-latest.osm.pbf
         run: python -u scripts/build.py
+      - name: Save photo library for future builds
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: public/assets/photos
+          key: stockholm-photos-${{ github.run_id }}
+      - name: Attach photo audit even if a validation later fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockholm-photo-audit-${{ github.run_id }}
+          path: |
+            public/assets/photos/photo-health.json
+            public/assets/photos/catalog.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Validate full-network dataset before publishing
         run: |
           python - <<'PY'
