@@ -1,4 +1,4 @@
-name: Stockholm Transit V9 - Build complete Swedish rail and Stockholm roads
+name: Stockholm Transit V9.1 - Routes and photo repair
 
 on:
   workflow_dispatch:
@@ -69,6 +69,41 @@ jobs:
               raise SystemExit('STOP: Less than 35% of Stockholm-serving long-distance rail trips follow mapped tracks')
           print('Validated V9 historical simulation with real OSM rail routes. No daily Trafiklab download.')
           PY
+      - name: Verify routes against the browser's stop-to-shape renderer
+        run: python -u scripts/validate_display.py
+      - name: Prevent a regression in actually displayed routes
+        run: |
+          python - <<'PY3'
+          import json, pathlib, collections
+          data=json.loads(pathlib.Path('public/data/display-coverage.json').read_text())
+          totals=collections.defaultdict(lambda:[0,0])
+          for line in data['lines']:
+              p=totals[line['mode']]
+              p[0]+=line['displayable'];p[1]+=line['total']
+          print('DISPLAYABLE ROUTES BY MODE:',{k:f'{v[0]}/{v[1]}' for k,v in totals.items()})
+          # Protect the current release against silent geometry regressions.
+          minimum={'metro':.70,'commuter':.90,'bus':.70,'rail':.65}
+          failures=[m for m,limit in minimum.items() if totals[m][1] and totals[m][0]/totals[m][1]<limit]
+          if failures:
+              raise SystemExit('STOP: browser-displayable coverage below floor: '+', '.join(failures))
+          PY3
+      - name: Check photo availability and publish audit report
+        run: |
+          python - <<'PY2'
+          import json,pathlib
+          p=pathlib.Path('public/assets/photos/photo-health.json')
+          if not p.exists():
+              raise SystemExit('Photo health report missing')
+          report=json.loads(p.read_text())
+          print('PHOTOS:',report['downloaded'],'/',report['expected'])
+          print('MISSING PHOTO KEYS:',sorted(report['missing']))
+          # Do not publish an update without recognizable core Stockholm vehicles.
+          catalog=json.loads(pathlib.Path('public/assets/photos/catalog.json').read_text())
+          essential=['commuter_x60','rail_arlanda','rail_malartag','bus_red69']
+          missing=[k for k in essential if k not in catalog]
+          if missing:
+              raise SystemExit('STOP: essential vehicle photographs missing: '+', '.join(missing))
+          PY2
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
