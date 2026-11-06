@@ -310,17 +310,21 @@ function showImage(v){
  const image=$('photoImg');image.hidden=true;image.removeAttribute('src');
  $('photo').style.display='block';$('photoCredit').hidden=true;
  photoFallbackFor(v.mode,v);$('photoNote').textContent='Illustration · fordonstyp inte verifierad';
- const key=photoCandidates(v).find(k=>photoCatalog[k]);
- if(!key)return;
- const item=photoCatalog[key];const probe=new Image();
- probe.onload=()=>{if(token!==photoRequest||selected!==v)return;
-   image.src=item.path;image.hidden=false;$('photoFallback').style.display='none';
-   $('photoNote').textContent=item.label+' · exempelbild, inte exakt tur';
-   if(item.source){$('photoCredit').hidden=false;$('photoCredit').href=item.source;
-      $('photoCredit').textContent=((item.author||'Fotograf')+' · '+(item.license||'Bildkälla')).slice(0,90)+' ↗';}
- };
- probe.onerror=()=>{if(token!==photoRequest)return;photoFallbackFor(v.mode,v);$('photoNote').textContent='Illustration · foto saknas';};
- probe.src=item.path;
+ const candidates=photoCandidates(v).filter(k=>photoCatalog[k]);
+ function tryPhoto(i){
+   if(token!==photoRequest||selected!==v)return;
+   if(i>=candidates.length){$('photoNote').textContent='Illustration · foto saknas';return;}
+   const item=photoCatalog[candidates[i]],probe=new Image();
+   probe.onload=()=>{if(token!==photoRequest||selected!==v)return;
+     image.src=item.path;image.hidden=false;$('photoFallback').style.display='none';
+     $('photoNote').textContent=item.label+' · exempelbild, inte exakt tur';
+     if(item.source){$('photoCredit').hidden=false;$('photoCredit').href=item.source;
+       $('photoCredit').textContent=((item.author||'Fotograf')+' · '+(item.license||'Bildkälla')).slice(0,90)+' ↗';}
+   };
+   probe.onerror=()=>tryPhoto(i+1);
+   probe.src=item.path;
+ }
+ tryPhoto(0);
 }
 async function readJson(url){const res=await fetch(url,{cache:'no-cache'});if(!res.ok)throw Error('HTTP '+res.status+' för '+url);return res.json()}
 async function load(){try{manifest=await readJson('data/manifest.json');net=await readJson('data/network.json');
