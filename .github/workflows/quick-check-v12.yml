@@ -1,0 +1,17 @@
+name: V12 Quick Check - no data download
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quick-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout V12 development
+        uses: actions/checkout@v4
+        with:
+          ref: rewrite/v12-foundation
+      - name: Check Stockholm time and route drawing logic
+        run: node tests/v12_smoke.cjs
+      - name: Python regression tests
+        run: python -m unittest discover -s tests -v
