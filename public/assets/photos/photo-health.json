@@ -1,0 +1,34 @@
+{
+  "policy": "LOCAL_ONLY_NO_BUILD_DOWNLOAD",
+  "expected": 25,
+  "available": 20,
+  "missing": {
+    "ferry_84": "missing metadata",
+    "rail_x2000": "missing metadata",
+    "rail_sj3000": "missing metadata",
+    "local_x15p_alt": "missing metadata",
+    "rail_oresund": "missing metadata"
+  },
+  "keys": [
+    "bus_blue2",
+    "bus_red69",
+    "bus_red75",
+    "commuter_x60",
+    "commuter_x60_alt",
+    "ferry_djurgarden10",
+    "local_saltsjo",
+    "local_x15p",
+    "metro_c20_blue",
+    "metro_c20_green",
+    "metro_c30",
+    "rail_arlanda",
+    "rail_malartag",
+    "rail_sj_rc6",
+    "rail_sj_x40",
+    "rail_snalltaget",
+    "rail_vr_x74",
+    "tram_a35",
+    "tram_city7",
+    "tram_nockeby12"
+  ]
+}
