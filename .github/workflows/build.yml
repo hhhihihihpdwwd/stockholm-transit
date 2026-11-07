@@ -93,9 +93,11 @@ jobs:
           print('PARTIAL OSM ROUTE COVERAGE:',{m:f'{part[m]}/{n}' for m,n in count.items()})
           for m in ('metro','commuter','bus','tram','rail'):
               assert count[m]>0,f'{m} disappeared from the historical snapshot'
-          floors={'metro':.60,'commuter':.75,'bus':.55,'rail':.35}
-          bad=[m for m,lower in floors.items() if full[m]/count[m]<lower]
-          if bad:raise SystemExit('STOP: route mapping significantly regressed: '+str(bad))
+          # Partial OSM routes are not equivalent to missing routes.
+          # An explicit dashed stop-to-stop overview is always available in the UI.
+          floors={'metro':.95,'commuter':.95,'bus':.90,'rail':.90}
+          bad=[m for m,lower in floors.items() if (full[m]+part[m])/count[m]<lower]
+          if bad:raise SystemExit('STOP: too few full OR partial OSM routes: '+str(bad))
           PY
       - name: Audit actually visible browser routes and stop anchors
         run: python -u scripts/validate_display.py
@@ -109,9 +111,10 @@ jobs:
               x=sums[l['mode']]
               x[0]+=l['displayable'];x[1]+=l['total'];x[2]+=l['partially_mapped']
           print('V11 BROWSER ROUTES:',{k:{'full':f'{x[0]}/{x[1]}','partial':x[2]} for k,x in sums.items()})
-          minimum={'metro':.70,'commuter':.90,'bus':.70,'rail':.65}
-          failures=[m for m,v in minimum.items() if sums[m][1] and sums[m][0]/sums[m][1]<v]
-          if failures:raise SystemExit('STOP: fully browser-displayable coverage below V10 guard: '+', '.join(failures))
+          # Check accurate or partial OSM geometry, not just full alignment.
+          minimum={'metro':.95,'commuter':.95,'bus':.90,'rail':.90}
+          failures=[m for m,v in minimum.items() if sums[m][1] and (sums[m][0]+sums[m][2])/sums[m][1]<v]
+          if failures:raise SystemExit('STOP: full or partial OSM coverage below guard: '+', '.join(failures))
           PY
       - name: Always attach photos and route reports, including on failure
         if: always()
