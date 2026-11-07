@@ -225,11 +225,11 @@ function render(ts){frame=requestAnimationFrame(render);if(ts-lastDraw<(active.l
 if(zoom<9&&choices.length>500){const step=Math.ceil(choices.length/500);choices=choices.filter((_,i)=>i%step===0||choices[i].v===selected)}
 pointsOnScreen=[];for(const {v,t} of choices){const pg=progressFor(v,now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0));if(!pg.pos||!bounds.contains(pg.pos))continue;const p=map.latLngToLayerPoint(pg.pos).subtract(canvasLayer.origin);p.underground=undergroundHere(v,pg);const clickP=map.latLngToContainerPoint(pg.pos);const isSel=v.id===selected?.id;drawVehicle(ctx,p,v,isSel);pointsOnScreen.push({p:clickP,v,pg})}if(selected){const found=pointsOnScreen.find(p=>p.v.id===selected.id);if(found&&follow&&ts-lastTick>1400){lastTick=ts;const center=map.getCenter(),want=found.pg.pos;if(map.distance(center,want)>160)map.panTo(want,{animate:true,duration:1.25})}if(ts-lastDetailDraw>1200)drawDetail();if(ts-lastRouteUpdate>850){lastRouteUpdate=ts;routeDraw(selected,progressFor(selected,now.seconds+(selected.day<now.date?86400:selected.day>now.date?-86400:0)),false)}} }
 let lastDetailDraw=0;
-let currentRouteId=null,routeGrey=null,routeBlue=null,segmentLines=[];
+let currentRouteId=null,routeGrey=null,routeBlue=null,segmentLines=[],fallbackGrey=null,fallbackBlue=null;
 function routeDraw(v,pg,rebuildStations=true){
- if(!v){layer.clearLayers();stationLayer.clearLayers();currentRouteId=null;routeGrey=null;routeBlue=null;segmentLines=[];return}
+ if(!v){layer.clearLayers();stationLayer.clearLayers();currentRouteId=null;routeGrey=null;routeBlue=null;segmentLines=[];fallbackGrey=null;fallbackBlue=null;return}
  const changed=currentRouteId!==v.id;
- if(changed){layer.clearLayers();stationLayer.clearLayers();currentRouteId=v.id;routeGrey=null;routeBlue=null;segmentLines=[]}
+ if(changed){layer.clearLayers();stationLayer.clearLayers();currentRouteId=v.id;routeGrey=null;routeBlue=null;segmentLines=[];fallbackGrey=null;fallbackBlue=null}
  const {shape,cum,anchors}=v;
  if(shape&&cum&&anchors){
   const a=anchors[0],b=anchors.at(-1);
@@ -273,6 +273,23 @@ function routeDraw(v,pg,rebuildStations=true){
    }
   }
  }
+ // Every scheduled trip has a visible, continuous stop-to-stop overview.
+ // This is an explicitly approximate connector, not a claimed OSM street/rail alignment.
+ // Accurate mapped geometry is drawn above it when available.
+ if(v.coords.length>=2){
+  const idx=Math.max(0,Math.min(v.coords.length-1,pg.index));
+  const currentPos=pg.pos||v.coords[idx];
+  const past=v.coords.slice(0,idx).concat([currentPos]);
+  const future=[currentPos].concat(v.coords.slice(idx));
+  // Preserve the full overview at the starting stop; the blue travelled portion grows naturally.
+  const approxStyle={weight:3,opacity:.62,dashArray:'4 7',interactive:false,lineCap:'round'};
+  if(!fallbackGrey){
+   fallbackGrey=L.polyline(future,{...approxStyle,color:'#899da9'}).addTo(layer);
+   fallbackBlue=L.polyline(past,{...approxStyle,color:'#238fdb',weight:4}).addTo(layer);
+   // Keep the accurate OSM segments visually above the approximate overview.
+   fallbackGrey.bringToBack();fallbackBlue.bringToBack();
+  }else{fallbackGrey.setLatLngs(future);fallbackBlue.setLatLngs(past)}
+ }
  if(changed||rebuildStations){
   stationLayer.clearLayers();
   for(let i=0;i<v.stops.length;i++){
@@ -286,7 +303,7 @@ function routeDraw(v,pg,rebuildStations=true){
 function updateStops(v,pg){const key=v.id+':'+pg.index;if(key===displayStopKey)return;displayStopKey=key;const html=v.stops.map((s,i)=>`<div class="stop ${i<pg.index?'passed':i===pg.index?'next':''}" data-idx="${i}"><span class="dot"></span><span class="stopName">${escapeHTML(net.stops[s[0]][2])}</span><span class="stopAt">${secTxt(s[1])}</span></div>`).join('');$('stopScroll').innerHTML=html;const node=$('stopScroll').querySelector('.next');if(node && Date.now()>manualScrollUntil)requestAnimationFrame(()=>{if(key!==displayStopKey)return;const list=$('stopScroll');const r=node.getBoundingClientRect(),outer=list.getBoundingClientRect();const target=list.scrollTop+r.top-outer.top-(list.clientHeight-r.height)/2;list.scrollTo({top:Math.max(0,target),behavior:'smooth'})})}
 $('stopScroll').addEventListener('wheel',()=>manualScrollUntil=Date.now()+15000,{passive:true});$('stopScroll').addEventListener('touchstart',()=>manualScrollUntil=Date.now()+15000,{passive:true});
 function drawDetail(force=false){if(!net)return;const now=stockholm();if(!selected){if(force){$('vehicleTitle').textContent='Stockholm / Sverige';$('vehicleSub').textContent='Klicka på ett fordon på kartan';$('routeBox').textContent='SE';$('routeBox').style.setProperty('--route','#237ed5');$('nextName').textContent='Inget fordon valt';$('nextTime').textContent='—';$('stopScroll').innerHTML='<div class="empty">Välj en buss, tunnelbana, pendeltåg eller annat fordon på kartan.</div>';$('speed').textContent='—';$('distance').textContent='—';$('remaining').textContent='—';$('photo').style.display='none';$('follow').disabled=true;displayStopKey='';}return}
-lastDetailDraw=performance.now();let v=selected;const time=now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0),pg=progressFor(v,time),stop=v.stops[pg.index],route=v.info;const mode=MODES.find(m=>m[0]===v.mode);$('routeBox').textContent=route[0]?.slice(0,11)||mode?.[1]||'SL';$('routeBox').style.setProperty('--route','#'+route[3]);$('vehicleTitle').textContent=v.head||route[1]||'Fordon';$('vehicleSub').textContent=(mode?.[2]||'Fordon')+' · '+(route[4]||'SL')+(v.shape?(v.estimated?' · uppskattad korridor':' · kartlagd färdväg'):v.segments?.length?' · delvis kartlagd färdväg':' · färdväg saknas');$('nextName').textContent=net.stops[stop[0]][2];$('nextTime').textContent=secTxt(stop[1]);$('progressText').textContent=pg.index+'/'+(v.stops.length-1)+' · SIMULERAT';$('speed').textContent=pg.speed===null?'— km/h':Math.round(pg.speed)+' km/h';$('distance').textContent=pg.distance>0?(pg.distance/1000).toFixed(1)+' km':'0 km';$('remaining').textContent=pg.remaining>60?Math.ceil(pg.remaining/60)+' min':pg.remaining+' s';$('follow').disabled=false;updateStops(v,pg);if(force)routeDraw(v,pg)}
+lastDetailDraw=performance.now();let v=selected;const time=now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0),pg=progressFor(v,time),stop=v.stops[pg.index],route=v.info;const mode=MODES.find(m=>m[0]===v.mode);$('routeBox').textContent=route[0]?.slice(0,11)||mode?.[1]||'SL';$('routeBox').style.setProperty('--route','#'+route[3]);$('vehicleTitle').textContent=v.head||route[1]||'Fordon';$('vehicleSub').textContent=(mode?.[2]||'Fordon')+' · '+(route[4]||'SL')+(v.shape?(v.estimated?' · uppskattad korridor':' · kartlagd färdväg'):v.segments?.length?' · delvis kartlagd färdväg':' · ungefärlig hållplatslinje');$('nextName').textContent=net.stops[stop[0]][2];$('nextTime').textContent=secTxt(stop[1]);$('progressText').textContent=pg.index+'/'+(v.stops.length-1)+' · SIMULERAT';$('speed').textContent=pg.speed===null?'— km/h':Math.round(pg.speed)+' km/h';$('distance').textContent=pg.distance>0?(pg.distance/1000).toFixed(1)+' km':'0 km';$('remaining').textContent=pg.remaining>60?Math.ceil(pg.remaining/60)+' min':pg.remaining+' s';$('follow').disabled=false;updateStops(v,pg);if(force)routeDraw(v,pg)}
 function selectVehicle(v){selected=v;follow=false;$('follow').textContent='◎ Följ fordon';displayStopKey='';manualScrollUntil=0;const now=stockholm();const pg=progressFor(v,now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0));if(pg.pos)map.flyTo(pg.pos,Math.max(11,map.getZoom()),{duration:.75});drawDetail(true);showImage(v)}
 function clear(){selected=null;follow=false;routeDraw(null);$('follow').textContent='◎ Följ fordon';drawDetail(true)}
 $('clear').onclick=clear;$('overview').onclick=()=>{clear();map.flyToBounds(defaultBounds,{padding:[28,28],maxZoom:11,duration:1})};$('swedenView').onclick=()=>{clear();map.flyToBounds(swedenBounds,{padding:[28,28],maxZoom:6,duration:1.2})};$('follow').onclick=()=>{follow=!follow;$('follow').textContent=follow?'◎ Följer fordon':'◎ Följ fordon'};
