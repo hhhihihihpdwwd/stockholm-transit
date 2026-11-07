@@ -1,0 +1,30 @@
+// V12 source-level regressions that run without a browser or external feeds.
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync('public/index.html','utf8');
+const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]).filter(Boolean);
+assert(scripts.length,'inline application missing');
+for(const js of scripts)new vm.Script(js,{filename:'public/index.html'});
+assert.match(html,/Stockholm \/ Transit V12/);
+assert.match(html,/hiddenRender/);
+assert.match(html,/loadApprovedImage\(url,timeoutMs=11000\)/);
+assert.match(html,/photoFailedUrls/);
+assert.match(html,/approved/i);
+assert.match(html,/routeDraw\(selected,/);
+const start=html.indexOf('function pathBetween(');
+const end=html.indexOf('\nconst geometryCache',start);
+assert(start>0&&end>start,'pathBetween function not found');
+const declaration=html.slice(start,end);
+const ctx={geomAt:(shape,cum,d)=>{
+ if(d<=0)return shape[0];
+ let k=1;while(k<cum.length-1&&cum[k]<d)k++;
+ const f=(d-cum[k-1])/(cum[k]-cum[k-1]);
+ return [shape[k-1][0]+(shape[k][0]-shape[k-1][0])*f,0];
+}};
+vm.createContext(ctx);vm.runInContext(declaration+';globalThis.segment=pathBetween;',ctx);
+const points=Array.from({length:10001},(_,i)=>[i,0]),cum=points.map(p=>p[0]);
+const result=ctx.segment(points,cum,2500.25,2510.75);
+assert.equal(result.length,12);
+assert.equal(result[0][0],2500.25);
+assert.equal(result.at(-1)[0],2510.75);
+assert.equal(ctx.segment(points,cum,700,700)[0][0],700);
+console.log('V12 JavaScript compilation and path slicing tests passed');
