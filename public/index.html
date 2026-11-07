@@ -1,4 +1,4 @@
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0e202a"><title>Stockholm / Transit V8 · Native Rail & Fleet</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0e202a"><title>Stockholm / Transit V12 · Clean</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#e8f1f4;background:#0d1e27}*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer}header{height:73px;display:flex;align-items:center;justify-content:space-between;gap:15px;padding:10px 20px;background:#0b1b24;border-bottom:1px solid #28404c}.brand{font-size:22px;font-weight:850;letter-spacing:-.8px}.brand span{color:#fee436}.sub{font-size:11px;color:#abbfc7;margin-top:3px}.headRight{display:flex;align-items:center;gap:12px}.pill{font-size:11px;font-weight:800;color:#ffde45;border:1px solid #f7de36;border-radius:50px;padding:8px 10px;white-space:nowrap}.clock{font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}.shell{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(360px,1fr);height:calc(100dvh - 73px);min-height:530px}.mapWrap{position:relative;min-width:0;overflow:hidden}.map{height:100%;width:100%;background:#d9e3da}.mapStatus{position:absolute;z-index:700;top:12px;left:53px;right:12px;display:flex;gap:7px;align-items:center;pointer-events:none;flex-wrap:wrap}.mapStatus span{color:#dcecf1;background:#122a34ed;border:1px solid #46616d;border-radius:8px;padding:7px 10px;font-size:12px;box-shadow:0 4px 16px #0003}.mapStatus strong{color:#f7e440}.mapBottom{position:absolute;z-index:700;bottom:18px;left:15px;right:15px;display:flex;gap:7px;flex-wrap:wrap;align-items:center;pointer-events:none}.filter,.mapAction{pointer-events:auto;display:inline-flex;gap:6px;align-items:center;background:#102630ef;border:1px solid #48636e;color:#f1fafb;border-radius:9px;padding:10px 11px;font-size:12px;font-weight:750;box-shadow:0 4px 14px #0005}.filter.off{opacity:.55}.filter .emoji{font-size:15px}.filter .check{color:#fae637}.mapAction{background:#f2dc32;color:#142733;border-color:#e9d52e}.mapAction.secondary{background:#13313b;color:#eef7fb;border-color:#496672}.mapAction:disabled{opacity:.55}.side{overflow:auto;padding:17px;background:#10232d;display:flex;flex-direction:column;gap:13px;border-left:1px solid #29414e}.status{font-size:12px;border:1px solid #3b5561;background:#19323d;border-radius:12px;padding:12px 14px;line-height:1.6}.status strong{color:#f7e636}.summary{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.status .minor,.muted{color:#b3c7ce}.viewTitle{font-size:20px;font-weight:850;line-height:1.2}.card{background:#172f3a;border:1px solid #3c5663;border-radius:12px;overflow:hidden}.vehicleHeader{display:flex;align-items:center;gap:12px;padding:13px 15px}.routeBox{border-radius:7px;padding:8px 11px;font-size:20px;font-weight:900;background:var(--route,#237ed5);color:white;min-width:54px;text-align:center}.vehicleTitle{font-size:19px;font-weight:800;line-height:1.2}.vehicleSub{font-size:12px;color:#b5cad1;margin-top:4px}.photo{display:none;margin:0 13px 13px;border-radius:10px;overflow:hidden;background:#213c47;position:relative;min-height:154px}.photo img{width:100%;height:190px;object-fit:cover;display:block}.photo span{position:absolute;bottom:0;left:0;right:0;background:#10232dcc;padding:7px 9px;font-size:11px;color:#edf7f8}.photoFallback{height:155px;display:grid;place-items:center;font-size:70px;color:#ffe235}.nextBox{background:#f3df2c;color:#16262a;padding:15px;border-radius:12px}.nextHead{font-size:11px;display:flex;justify-content:space-between;font-weight:800;letter-spacing:.25px}.nextRow{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:4px}.nextName{font-weight:900;font-size:21px}.nextTime{font-weight:900;font-size:22px;white-space:nowrap}.stopScroll{max-height:36vh;min-height:96px;overflow:auto;scrollbar-color:#657b81 transparent}.stop{position:relative;display:grid;grid-template-columns:20px 1fr auto;gap:10px;align-items:center;padding:10px 13px;border-bottom:1px solid #2d4855;min-height:49px}.stop:before{content:"";background:#5a7380;position:absolute;left:22px;width:2px;top:0;bottom:0}.stop:first-child:before{top:50%}.stop:last-child:before{bottom:50%}.stop .dot{width:12px;height:12px;background:#17303b;border:2px solid #b7d4db;border-radius:50%;z-index:1;position:relative;margin-left:3px}.stop.passed{opacity:.5}.stop.next{background:#3b4a3c}.stop.next .dot{background:#ffe23a;border-color:#ffe23a;box-shadow:0 0 0 3px #ffe23a30}.stopName{font-size:13px;font-weight:700}.stopAt{font-size:13px;font-variant-numeric:tabular-nums;font-weight:800}.note{font-size:11px;color:#9eb5be;line-height:1.65}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.metric{background:#1a333f;border:1px solid #41616d;border-radius:10px;padding:12px 9px;text-align:center}.metric strong{display:block;font-variant-numeric:tabular-nums;color:#ffe43b;font-size:21px;margin-top:4px}.metric small{font-size:10px;color:#b9ccd1}.actions{display:flex;gap:8px}.actionBtn{border:1px solid #536c76;border-radius:9px;background:#23404e;color:#fff;padding:11px 12px;font-weight:800;font-size:13px}.actionBtn.primary{flex:1;color:#172c32;background:#f5df34;border-color:#f5df34}.legend{display:flex;align-items:center;gap:9px}.legend i{height:4px;width:34px;border-radius:4px;display:inline-block}.empty{border:1px dashed #51707c;border-radius:11px;padding:20px;color:#c0d2d8;font-size:13px;line-height:1.7}.hide{display:none!important}.alert{color:#ffe3a1}.leaflet-container{font:inherit}.leaflet-control-attribution{font-size:10px}.vehicleCanvas{position:absolute;inset:0;z-index:450;pointer-events:none}.loadingPulse{animation:pulse 1.6s infinite}@keyframes pulse{50%{opacity:.55}}
 @media(max-width:900px){header{height:auto;min-height:70px;padding:11px 13px;flex-wrap:wrap}.brand{font-size:20px}.headRight{gap:7px}.pill{font-size:9px}.clock{font-size:12px}.shell{display:flex;height:auto;min-height:0;flex-direction:column}.mapWrap{height:74dvh;min-height:400px;max-height:920px}.side{border-left:0;border-top:1px solid #2b414d;padding:12px;overflow:visible}.mapBottom{bottom:13px;left:10px;right:10px;gap:5px}.filter,.mapAction{padding:9px 9px;font-size:11px}.mapStatus{right:7px;top:7px}.stopScroll{max-height:46dvh}.photo img{height:160px}}
 @media(max-width:530px){.brand{font-size:18px}.sub{font-size:10px}.mapWrap{height:73dvh;min-height:380px}.mapStatus span{font-size:10px;padding:6px}.filter{font-size:10px}.filter .emoji{font-size:13px}.nextName{font-size:18px}.vehicleTitle{font-size:17px}.metric strong{font-size:18px}}
@@ -93,7 +93,7 @@ function distance(a,b){if(!a||!b)return 0;const R=6371000,rad=Math.PI/180,p1=a[0
 function cumGeom(shape){let total=0,arr=[0];for(let i=1;i<shape.length;i++){total+=distance(shape[i-1],shape[i]);arr.push(total)}return arr}
 function projectPoint(shape,p,start=0){let best={d:Infinity,dist:0,idx:0},cum=0;for(let i=1;i<shape.length;i++){const a=shape[i-1],b=shape[i], latScale=111130,lonScale=111130*Math.cos(p[0]*Math.PI/180);const dx=(b[1]-a[1])*lonScale,dy=(b[0]-a[0])*latScale;const px=(p[1]-a[1])*lonScale,py=(p[0]-a[0])*latScale;const frac=Math.max(0,Math.min(1,(px*dx+py*dy)/(dx*dx+dy*dy||1)));const err=Math.hypot(px-frac*dx,py-frac*dy);const seg=distance(a,b);if(err<best.d && cum+frac*seg>=start-100){best={d:err,dist:cum+frac*seg,idx:i}}cum+=seg}return best}
 function geomAt(shape,cum,d){if(!shape?.length)return null;if(d<=0)return shape[0];let lo=1,hi=cum.length-1;while(lo<hi){const mid=(lo+hi)>>1;if(cum[mid]<d)lo=mid+1;else hi=mid}const i=lo,p=shape[i-1],q=shape[i],delta=cum[i]-cum[i-1],f=delta?Math.max(0,Math.min(1,(d-cum[i-1])/delta)):0;return [p[0]+(q[0]-p[0])*f,p[1]+(q[1]-p[1])*f]}
-function pathBetween(shape,cum,a,b){if(!shape?.length)return [];const out=[geomAt(shape,cum,a)];for(let i=1;i<cum.length-1;i++)if(cum[i]>a&&cum[i]<b)out.push(shape[i]);out.push(geomAt(shape,cum,b));return out}
+function pathBetween(shape,cum,a,b){if(!shape?.length||!cum?.length)return [];const start=Math.max(0,Math.min(a,b)),end=Math.max(start,Math.max(a,b));const out=[geomAt(shape,cum,start)];let lo=1,hi=cum.length-1;while(lo<hi){const mid=(lo+hi)>>1;if(cum[mid]<=start)lo=mid+1;else hi=mid}for(let i=lo;i<cum.length-1&&cum[i]<end;i++)out.push(shape[i]);out.push(geomAt(shape,cum,end));return out}
 const geometryCache=new Map();
 function buildTrip(item,i,day){const [route,head,shapeId,stops]=item;if(stops.length<2||route>=net.routes.length)return null;const routeInfo=net.routes[route],geometry=net.shapes[shapeId]||null;const coords=stops.map(s=>net.stops[s[0]]);if(coords.some(x=>!x))return null;const shape=geometry?.length>1?geometry:null;let cum=null,anchors=null;
 if(shape){
@@ -218,10 +218,12 @@ function drawVehicle(ctx,p,v,isSelected){
  if(isSelected){ctx.strokeStyle='#ffe32a';ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(p.x,p.y,21,0,Math.PI*2);ctx.stroke()}
 }
 let lastDraw=0,frame=0,lastRouteUpdate=0,lastClockPaint=0;
+let hiddenRender=false;
+document.addEventListener('visibilitychange',()=>{hiddenRender=document.hidden;if(!hiddenRender){lastDraw=0;lastRouteUpdate=0;updateViewport()}});
 let visibleBounds=map.getBounds().pad(.12),visibleZoom=map.getZoom();
 function updateViewport(){visibleBounds=map.getBounds().pad(.12);visibleZoom=map.getZoom()}
 map.on('move zoom resize',updateViewport);
-function render(ts){frame=requestAnimationFrame(render);if(ts-lastDraw<(active.length>900?32:active.length>450?22:16))return;lastDraw=ts;const ctx=canvasLayer.ctx;if(!ctx||!net)return;const size=map.getSize();ctx.clearRect(0,0,size.x,size.y);const now=animationClock();if(ts-lastClockPaint>850){lastClockPaint=ts;const secs=Math.floor(now.seconds)%86400;$('clock').textContent=secTxt(secs)+':'+String(secs%60).padStart(2,'0')+' · Sverige'}const bounds=visibleBounds,zoom=visibleZoom;let choices=active; // limit drawing at wide zoom for mobile speed
+function render(ts){frame=requestAnimationFrame(render);if(hiddenRender)return;if(ts-lastDraw<(active.length>900?40:active.length>450?25:16))return;lastDraw=ts;const ctx=canvasLayer.ctx;if(!ctx||!net)return;const size=map.getSize();ctx.clearRect(0,0,size.x,size.y);const now=animationClock();if(ts-lastClockPaint>850){lastClockPaint=ts;const secs=Math.floor(now.seconds)%86400;$('clock').textContent=secTxt(secs)+':'+String(secs%60).padStart(2,'0')+' · Sverige'}const bounds=visibleBounds,zoom=visibleZoom;let choices=active; // limit drawing at wide zoom for mobile speed
 if(zoom<9&&choices.length>500){const step=Math.ceil(choices.length/500);choices=choices.filter((_,i)=>i%step===0||choices[i].v===selected)}
 pointsOnScreen=[];for(const {v,t} of choices){const pg=progressFor(v,now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0));if(!pg.pos||!bounds.contains(pg.pos))continue;const p=map.latLngToLayerPoint(pg.pos).subtract(canvasLayer.origin);p.underground=undergroundHere(v,pg);const clickP=map.latLngToContainerPoint(pg.pos);const isSel=v.id===selected?.id;drawVehicle(ctx,p,v,isSel);pointsOnScreen.push({p:clickP,v,pg})}if(selected){const found=pointsOnScreen.find(p=>p.v.id===selected.id);if(found&&follow&&ts-lastTick>1400){lastTick=ts;const center=map.getCenter(),want=found.pg.pos;if(map.distance(center,want)>160)map.panTo(want,{animate:true,duration:1.25})}if(ts-lastDetailDraw>1200)drawDetail();if(ts-lastRouteUpdate>850){lastRouteUpdate=ts;routeDraw(selected,progressFor(selected,now.seconds+(selected.day<now.date?86400:selected.day>now.date?-86400:0)),false)}} }
 let lastDetailDraw=0;
@@ -398,43 +400,46 @@ function photoCandidates(v){
  }
  return [];
 }
-function showImage(v){
+// V12: bounded image loading and strict approval-only fallback.
+const photoFailedUrls=new Set();
+function loadApprovedImage(url,timeoutMs=11000){
+ return new Promise((resolve,reject)=>{
+  if(photoFailedUrls.has(url)){reject(Error('Previously unavailable photo'));return}
+  const probe=new Image();let done=false;
+  const timer=setTimeout(()=>finish(false),timeoutMs);
+  function finish(ok){if(done)return;done=true;clearTimeout(timer);probe.onload=null;probe.onerror=null;
+   if(ok)resolve(url);else{photoFailedUrls.add(url);reject(Error('Photo request failed or timed out'))}}
+  probe.onload=()=>finish(true);probe.onerror=()=>finish(false);probe.src=url;
+ });
+}
+async function showImage(v){
  const token=++photoRequest;
  const image=$('photoImg');image.hidden=true;image.removeAttribute('src');
  $('photo').style.display='block';$('photoCredit').hidden=true;
- photoFallbackFor(v.mode,v);$('photoNote').textContent='Illustration · fordonstyp inte verifierad';
- const candidates=photoCandidates(v).filter(k=>photoCatalog[k] || APPROVED_PHOTOS[k]);
- function tryPhoto(i){
-   if(token!==photoRequest||selected!==v)return;
-   if(i>=candidates.length){$('photoNote').textContent='Fordonssymbol · inget verifierat foto kunde laddas';$('photoCredit').hidden=true;return;}
-   const key=candidates[i],item=photoCatalog[key]||APPROVED_PHOTOS[key];
-   const exact=APPROVED_PHOTOS[key];
-   // URL is derived from the exact file the user approved, NEVER a search result.
-   const commons=exact?'https://commons.wikimedia.org/wiki/Special:Redirect/file/'+encodeURIComponent(exact.title)+'?width=820':null;
-   const commonsOriginal=exact?'https://commons.wikimedia.org/wiki/Special:Redirect/file/'+encodeURIComponent(exact.title):null;
-   const urls=[item.path?(item.path+'?v='+encodeURIComponent(manifest?.generated||'v11')):null,commons,commonsOriginal].filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j);
-   function tryUrl(j){
-     if(token!==photoRequest||selected!==v)return;
-     if(j>=urls.length){tryPhoto(i+1);return;}
-     const probe=new Image();
-     probe.onload=()=>{
-       if(token!==photoRequest||selected!==v)return;
-       image.src=urls[j];image.hidden=false;$('photoFallback').style.display='none';
-       $('photoNote').textContent=(item.label||exact?.label||'Fordon')+' · exempelbild, inte exakt tur';
-       const source=item.source||exact?.source;
-       if(source){$('photoCredit').hidden=false;$('photoCredit').href=source;
-         $('photoCredit').textContent=((item.author||'Foto: Wikimedia Commons')+' · '+(item.license||'Wikimedia Commons ↗')).slice(0,90);}
-     };
-     probe.onerror=()=>{console.warn('Approved photo unavailable',key,urls[j]);tryUrl(j+1)};
-     probe.src=urls[j];
-   }
-   tryUrl(0);
+ photoFallbackFor(v.mode,v);$('photoNote').textContent='Godkänd bild laddas…';
+ const candidates=photoCandidates(v).filter(k=>photoCatalog[k]||APPROVED_PHOTOS[k]);
+ for(const key of candidates){
+  if(token!==photoRequest||selected!==v)return;
+  const item=photoCatalog[key]||APPROVED_PHOTOS[key],exact=APPROVED_PHOTOS[key];
+  if(!exact)continue;
+  const commons='https://commons.wikimedia.org/wiki/Special:Redirect/file/'+encodeURIComponent(exact.title)+'?width=820';
+  const original='https://commons.wikimedia.org/wiki/Special:Redirect/file/'+encodeURIComponent(exact.title);
+  const urls=[item.path?(item.path+'?v='+encodeURIComponent(manifest?.generated||'v12')):null,commons,original].filter(Boolean);
+  for(const url of [...new Set(urls)]){
+   try{await loadApprovedImage(url);if(token!==photoRequest||selected!==v)return;
+    image.src=url;image.hidden=false;$('photoFallback').style.display='none';
+    $('photoNote').textContent=(item.label||exact.label||'Fordon')+' · exempelbild, inte exakt tur';
+    const source=item.source||exact.source;
+    if(source){$('photoCredit').hidden=false;$('photoCredit').href=source;
+     $('photoCredit').textContent=((item.author||'Wikimedia Commons')+' · '+(item.license||'se original')).slice(0,90)}
+    return;
+   }catch(err){console.warn('Approved photo unavailable:',key,err.message)}
+  }
  }
-
- tryPhoto(0);
+ if(token===photoRequest&&selected===v){$('photoNote').textContent='Fordonssymbol · verifierat foto saknas';$('photoCredit').hidden=true}
 }
 async function readJson(url){const res=await fetch(url,{cache:url.includes('manifest.json')?'no-cache':'default'});if(!res.ok)throw Error('HTTP '+res.status+' för '+url);return res.json()}
-async function load(){try{manifest=await readJson('data/manifest.json');const rev='?v='+encodeURIComponent(manifest.generated||manifest.snapshot||'v11');net=await readJson('data/network.json'+rev);
+async function load(){try{manifest=await readJson('data/manifest.json');const rev='?v='+encodeURIComponent(manifest.generated||manifest.snapshot||'v12');net=await readJson('data/network.json'+rev);
 try{photoCatalog=await readJson('assets/photos/catalog.json'+rev)}catch(e){photoCatalog={};console.warn('Local photo catalog unavailable; using exclusively approved Commons source URLs')}$('source').textContent='Källor: '+manifest.sources.join(', ')+' · Arkiv '+(manifest.snapshot||'')+' · inte aktuella trafikuppgifter';$('simStatus').textContent='Historisk veckosimulering · kompletterad trafik · ingen GPS';const today=stockholm().date;
 // Historical archive repeated as a representative weekday/weekend schedule;
 // map the 7 archived dates onto yesterday/today/tomorrow without new downloads.
@@ -444,7 +449,7 @@ if(manifest.weekly_repeat){
  for(const target of targets){const sample=byWeekday.get(new Date(target+'T12:00:00Z').getUTCDay());if(!sample)continue;
   try{const json=await readJson('data/'+sample+'.json'+rev);schedules[target]=json.trips.map(x=>[x[3][0][1],x[3].at(-1)[2],x])}catch(e){console.warn(e)}
  }
-}else{for(const date of manifest.dates){try{const json=await readJson('data/'+date+'.json'+rev);schedules[date]=json.trips.map(x=>[x[3][0][1],x[3].at(-1)[2],x])}catch(e){console.warn(e)}}}$('dateText').textContent=today;$('statusTitle').textContent='Tidtabellssimulering aktiv';if(net?.meta?.stockholm_bounds){const b=net.meta.stockholm_bounds;defaultBounds[0]=[b[0],b[2]];defaultBounds[1]=[b[1],b[3]]}if(net?.meta?.national_bounds){const b=net.meta.national_bounds;swedenBounds[0]=[b[0],b[2]];swedenBounds[1]=[b[1],b[3]]}$('statusText').textContent='Arkiv '+(manifest.snapshot||'')+' · återanvända veckodagar · ingen aktuell tidtabell';$('count').classList.remove('loadingPulse');drawDetail(true);tick();requestAnimationFrame(render)}catch(e){$('statusTitle').textContent='Data saknas';$('statusText').innerHTML='Ingen färdig tidtabell hittades. Starta GitHub Actions-jobbet <b>Stockholm Transit V11 - Stable photos, mapped routes, smooth movement</b> och kontrollera datarapporten.';$('simStatus').textContent='Inställning krävs';$('count').innerHTML='<strong>0</strong> fordon';console.error(e)}}
+}else{for(const date of manifest.dates){try{const json=await readJson('data/'+date+'.json'+rev);schedules[date]=json.trips.map(x=>[x[3][0][1],x[3].at(-1)[2],x])}catch(e){console.warn(e)}}}$('dateText').textContent=today;$('statusTitle').textContent='Tidtabellssimulering aktiv';if(net?.meta?.stockholm_bounds){const b=net.meta.stockholm_bounds;defaultBounds[0]=[b[0],b[2]];defaultBounds[1]=[b[1],b[3]]}if(net?.meta?.national_bounds){const b=net.meta.national_bounds;swedenBounds[0]=[b[0],b[2]];swedenBounds[1]=[b[1],b[3]]}$('statusText').textContent='Arkiv '+(manifest.snapshot||'')+' · återanvända veckodagar · ingen aktuell tidtabell';$('count').classList.remove('loadingPulse');drawDetail(true);tick();requestAnimationFrame(render)}catch(e){$('statusTitle').textContent='Data saknas';$('statusText').innerHTML='Ingen färdig tidtabell hittades. Starta GitHub Actions-jobbet <b>Deploy Stockholm Transit V12 - Clean</b> och kontrollera datarapporten.';$('simStatus').textContent='Inställning krävs';$('count').innerHTML='<strong>0</strong> fordon';console.error(e)}}
 function tick(){const now=sampleClock();if(lastDate!==now.date){if(lastDate&&manifest?.weekly_repeat){location.reload();return}lastDate=now.date;$('dateText').textContent=now.date;if(manifest&&!manifest.weekly_repeat&&!manifest.dates.includes(now.date)){$('statusTitle').textContent='Tidtabell behöver uppdateras';$('statusText').textContent='GitHub Actions måste publicera aktuella trafikdygn.'}}updateActive(now);if(selected)drawDetail();setTimeout(tick,1500)}
 sampleClock();window.addEventListener('resize',()=>setTimeout(()=>map.invalidateSize(),100));new ResizeObserver(()=>map.invalidateSize({pan:false})).observe($('map'));load();
 })();
