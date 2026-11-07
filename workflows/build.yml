@@ -1,0 +1,147 @@
+name: Stockholm Transit V11 - Stable photos, mapped routes, smooth movement
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stockholm-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout the exact existing project
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install photo resizing and corruption checks
+        run: python -m pip install --disable-pip-version-check Pillow
+      - name: Verify V11 code and regression tests first
+        run: |
+          python -m unittest discover -s tests -v
+          node -e 'const f=require("fs");const s=f.readFileSync("public/index.html","utf8");new Function(s.match(/<script>([\s\S]*)<\/script>/)[1]);console.log("V11 JavaScript syntax valid")'
+      - name: Import ONLY the 25 photos explicitly approved by the user
+        run: |
+          python -u scripts/fetch_photos.py
+          python -u scripts/local_photos.py
+          python - <<'PY'
+          import json
+          v=json.load(open('public/assets/photos/photo-health.json'))
+          print('V11 VERIFIED LOCAL PHOTOS:',v['available'],'/',v['expected'],flush=True)
+          print('MISSING APPROVED TITLES:',v['missing'],flush=True)
+          # Never repeat the V10 disaster of publishing an empty photo library.
+          if v['available']<20:
+              raise SystemExit('STOP: fewer than 20 of the 25 approved local images are valid. Traffic deployment cancelled; inspect photo audit instead.')
+          PY
+      - name: Permanently store photos before the expensive OSM build
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A public/assets/photos
+          if git diff --cached --quiet; then
+            echo 'All existing verified photographs already preserved.'
+          else
+            git commit -m 'V11: preserve approved Commons originals and attribution'
+            # Repository rules can prevent write access. The current build
+            # still includes the files; a skipped push is never silent.
+            if ! git push; then
+              echo 'WARNING: could not push photo assets to main. Check Actions write permissions.'
+            fi
+          fi
+      - name: Preserve OSM extracts across rebuilds
+        uses: actions/cache@v4
+        with:
+          path: /tmp/stockholm-transit-v9
+          key: stockholm-v11-sweden-osm-20261107-wide-region-v1
+      - name: Install OSM graph parser
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+          python -m pip install --disable-pip-version-check osmium
+      - name: Generate historical services and FULL plus PARTIAL OSM tracks
+        env:
+          GTFS_ARCHIVE_URL: https://data.samtrafiken.se/trafiklab/gtfs-sverige-2/2026/11/sweden-20261104.zip
+          OSM_GEOMETRY: '1'
+          SWEDEN_OSM_URL: https://download.geofabrik.de/europe/sweden-latest.osm.pbf
+        run: python -u scripts/build.py
+      - name: Validate all core transport modes and minimum geometry coverage
+        run: |
+          python - <<'PY'
+          import json,collections,pathlib
+          root=pathlib.Path('public/data')
+          manifest=json.loads((root/'manifest.json').read_text())
+          net=json.loads((root/'network.json').read_text())
+          assert manifest.get('weekly_repeat') and len(manifest['dates'])==7
+          assert net['routes'] and net['stops'] and net['shapes']
+          count=collections.Counter();full=collections.Counter();part=collections.Counter()
+          for day in manifest['dates']:
+              for item in json.loads((root/(day+'.json')).read_text())['trips']:
+                  mode=net['routes'][item[0]][2];count[mode]+=1
+                  if item[2]>=0:full[mode]+=1
+                  elif len(item)>8 and item[8]:part[mode]+=1
+          print('MODE TOTALS:',dict(count))
+          print('FULL OSM ROUTE COVERAGE:',{m:f'{full[m]}/{n}' for m,n in count.items()})
+          print('PARTIAL OSM ROUTE COVERAGE:',{m:f'{part[m]}/{n}' for m,n in count.items()})
+          for m in ('metro','commuter','bus','tram','rail'):
+              assert count[m]>0,f'{m} disappeared from the historical snapshot'
+          floors={'metro':.60,'commuter':.75,'bus':.55,'rail':.35}
+          bad=[m for m,lower in floors.items() if full[m]/count[m]<lower]
+          if bad:raise SystemExit('STOP: route mapping significantly regressed: '+str(bad))
+          PY
+      - name: Audit actually visible browser routes and stop anchors
+        run: python -u scripts/validate_display.py
+      - name: Prevent publishing a route-visibility regression
+        run: |
+          python - <<'PY'
+          import json,collections
+          data=json.load(open('public/data/display-coverage.json'))
+          sums=collections.defaultdict(lambda:[0,0,0])
+          for l in data['lines']:
+              x=sums[l['mode']]
+              x[0]+=l['displayable'];x[1]+=l['total'];x[2]+=l['partially_mapped']
+          print('V11 BROWSER ROUTES:',{k:{'full':f'{x[0]}/{x[1]}','partial':x[2]} for k,x in sums.items()})
+          minimum={'metro':.70,'commuter':.90,'bus':.70,'rail':.65}
+          failures=[m for m,v in minimum.items() if sums[m][1] and sums[m][0]/sums[m][1]<v]
+          if failures:raise SystemExit('STOP: fully browser-displayable coverage below V10 guard: '+', '.join(failures))
+          PY
+      - name: Always attach photos and route reports, including on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockholm-v11-validation-reports
+          path: |
+            public/assets/photos/photo-health.json
+            public/assets/photos/catalog.json
+            public/data/route-coverage.json
+            public/data/display-coverage.json
+            public/data/manifest.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload V11 to GitHub Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Publish only the tested V11 release
+        id: deployment
+        uses: actions/deploy-pages@v4

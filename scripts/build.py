@@ -486,6 +486,8 @@ def main():
         for item in trips:
             used_routes.add(item[0]);used_stops.update(st[0] for st in item[3])
             if item[2] >= 0:used_shapes.add(item[2])
+            if len(item)>8 and isinstance(item[8],list):
+                used_shapes.update(part[0] for part in item[8])
     route_ids={old:i for i,old in enumerate(sorted(used_routes))}
     stop_ids={old:i for i,old in enumerate(sorted(used_stops))}
     shape_ids={old:i for i,old in enumerate(sorted(used_shapes))}
@@ -504,6 +506,8 @@ def main():
             reindexed_items.add(identity)
             item[0] = route_ids[item[0]]
             item[2] = shape_ids.get(item[2], -1)
+            if len(item)>8 and isinstance(item[8],list):
+                for piece in item[8]:piece[0]=shape_ids[piece[0]]
             for stop in item[3]:
                 stop[0] = stop_ids[stop[0]]
     print('PUBLISHED NETWORK:',len(routes),'routes,',len(stops),'stops,',len(shapes),'shapes',flush=True)
@@ -545,7 +549,7 @@ def main():
         'excluded_modes': sorted(SKIP_MODES),
         'mode': 'historical-weekday-repeat', 'synthetic_supplements': True, 'osm_connected_geometry': True, 'stockholm_only_local': True,
         'snapshot': '2026-11-04',
-        'historical': True,
+        'historical': True, 'route_segments_v11': True,
     }
     net = {'meta': meta, 'routes': routes, 'stops': stops, 'shapes': shapes, 'tunnels': compact_tunnels}
     (OUT / 'network.json').write_text(json.dumps(net, ensure_ascii=False, separators=(',', ':')))

@@ -1,3 +1,7 @@
+# Stockholm Transit V11
+
+**Installationsanleitung: [README_V11_START_HIER.md](README_V11_START_HIER.md)**
+
 # STOCKHOLM / TRANSIT — Version 1
 
 Eine fahrplanbasierte Verkehrssimulation für Stockholm. **Keine Live-GPS-Daten.** Die Anzeige verwendet ausschließlich die aktuelle schwedische Ortszeit, mit sanfter Positionierung entlang verfügbarer GTFS-Streckenformen. Auf der Karte werden Verkehrsmittel aus den geladenen GTFS-Datensätzen dargestellt: Metro, Bus, Pendeltåg, Trams, Lokalbahnen, Fern-/Regionalzüge und Fähren. Die Abdeckung hängt von den Datenfeeds ab.

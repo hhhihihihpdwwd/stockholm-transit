@@ -144,37 +144,46 @@ class Graph:
         cache_key=(round(p[0],6),round(p[1],6),round(q[0],6),round(q[1],6),mode)
         if cache_key in self._path_cache:return self._path_cache[cache_key]
         max_snap=580 if mode=='bus' else (1000 if mode=='ferry' else 740)
-        starts=self.nearby(p,max_snap)
-        ends=self.nearby(q,max_snap)
-        if not starts or not ends:return None
-        # Keep station-specific candidates: an overly broad snap radius can
-        # otherwise select the very same node for both adjacent stations.
-        tolerance=min(125,max(40,direct*.25))
-        starts=[x for x in starts if x[0]<=starts[0][0]+tolerance]
-        ends=[x for x in ends if x[0]<=ends[0][0]+tolerance]
-        by_component=collections.defaultdict(list)
-        for d,n in ends:by_component[self.root(n)].append((d,n))
-        starts=[(d,n) for d,n in starts if self.root(n) in by_component]
-        if not starts:return None
-        ends=[(d,n) for d,n in ends if self.root(n) in {self.root(x) for _,x in starts}]
-        if not ends:return None
+        # Try narrow platform/roadside snapping first. Only when no compatible
+        # connected component exists, expand to neighbouring graph components.
+        # The extension is bounded; it never creates guessed inter-stop roads.
+        best_pair=None
+        for radius,tolerance in ((max_snap,min(125,max(28,direct*.23))),(max_snap*1.55,max(130,min(360,direct*.38)))):
+            starts=self.nearby(p,radius,max_nodes=50)
+            ends=self.nearby(q,radius,max_nodes=50)
+            if not starts or not ends:continue
+            nearest_a,nearest_b=starts[0][0],ends[0][0]
+            starts=[pair for pair in starts if pair[0]<=nearest_a+tolerance]
+            ends=[pair for pair in ends if pair[0]<=nearest_b+tolerance]
+            end_components={self.root(n) for d,n in ends}
+            starts=[pair for pair in starts if self.root(pair[1]) in end_components]
+            if not starts:continue
+            components={self.root(n) for d,n in starts}
+            ends=[pair for pair in ends if self.root(pair[1]) in components]
+            if ends:
+                best_pair=(starts,ends)
+                break
+        if not best_pair:return None
+        starts,ends=best_pair
         targets={n:d for d,n in ends}
-        # A* where both station-to-rail offsets are part of the cost.
-        # A finite detour allowance protects against accidentally routing
-        # via a disconnected remote corridor or around a wrong bay.
-        maxlen=max(2000,direct*(5.5 if mode=='bus' else 4.4)+2000)
+        # A* with explicit snap costs. Strict detour and expansion caps prevent
+        # a disconnected/wrong network corridor masquerading as a real route.
+        maxlen=max(2300,direct*(5.5 if mode=='bus' else 4.4)+2300)
         heap=[];costs={};prev={};tunnel={}
         for d,n in starts:
             if d<costs.get(n,math.inf):
                 costs[n]=d
                 heapq.heappush(heap,(d+hav(self.points[n],q),d,n))
         destination=None;best_score=math.inf
+        iterations=0
         while heap:
             lower,cost,node=heapq.heappop(heap)
             if cost!=costs.get(node):continue
             if cost>maxlen:continue
             if lower>best_score:break
-            if node in targets:
+            # Do not consider a zero-edge path valid when two distinct bus
+            # stops happen to snap to the same street intersection.
+            if node in targets and node in prev:
                 score=cost+targets[node]
                 if score<best_score:best_score=score;destination=node
             for nxt,edge,under in self.edges.get(node,()):
@@ -182,6 +191,8 @@ class Graph:
                 if alt<costs.get(nxt,math.inf) and alt<=maxlen:
                     costs[nxt]=alt;prev[nxt]=node;tunnel[nxt]=under
                     heapq.heappush(heap,(alt+hav(self.points[nxt],q),alt,nxt))
+            iterations+=1
+            if iterations>180000:break
         if destination is None:return None
         ids=[];node=destination
         while node in prev:
@@ -190,10 +201,10 @@ class Graph:
         if len(ids)<2:return None
         coords=[self.points[x] for x in ids]
         length=sum(hav(a,b) for a,b in zip(coords,coords[1:]))
-        if length>maxlen or length<direct*.55:return None
+        if length>maxlen or length<direct*.45:return None
         underground=[bool(tunnel.get(x,False)) for x in ids]
         result=(coords,underground)
-        if len(self._path_cache)>20000:self._path_cache.clear()
+        if len(self._path_cache)>30000:self._path_cache.clear()
         self._path_cache[cache_key]=result
         return result
 

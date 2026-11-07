@@ -111,6 +111,7 @@ class BuildTests(unittest.TestCase):
         self.assertIn('pip install --disable-pip-version-check osmium',wf)
         self.assertIn('workflow_dispatch:',wf)
         self.assertNotIn('schedule:',wf)
-        self.assertIn('geometry[\'metro\']',wf)
+        self.assertIn('FULL OSM ROUTE COVERAGE:',wf)
+        self.assertIn('Prevent publishing a route-visibility regression',wf)
 
 if __name__=='__main__':unittest.main()

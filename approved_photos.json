@@ -267,7 +267,7 @@
     },
     {
       "id": "rail_snall",
-      "label": "Snälltåget – Vectron-Lokomotive in Stockholm",
+      "label": "Snälltåget – Vectron-Lokomotive in Lund",
       "file": "19.05.22 Lund Centralstation 193287 (52093971006).jpg",
       "url": "https://commons.wikimedia.org/wiki/File:19.05.22_Lund_Centralstation_193287_(52093971006).jpg",
       "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sn%C3%A4llt%C3%A5get%2002.jpg?width=650",
@@ -366,7 +366,7 @@
     },
     {
       "id": "extra_local_x15p_alt",
-      "label": "Roslagsbanan – X15p bei Vallentuna",
+      "label": "Roslagsbanan – X15p bei Stockholms östra",
       "file": "Stockholms östra SL X15p - 20240420 - 01.jpg",
       "url": "https://commons.wikimedia.org/wiki/File:Stockholms_%C3%B6stra_SL_X15p_-_20240420_-_01.jpg",
       "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/X15P%20Vid%20Vallentuna.jpg?width=650",
@@ -377,7 +377,7 @@
     },
     {
       "id": "extra_rail_oresund",
-      "label": "Öresundståg X31 – am Bahnhof Alvesta",
+      "label": "Öresundståg X31 – am Bahnhof Kristianstad",
       "file": "18.05.22 Kristianstad X31K 4319+X31K 4402 (52094208294).jpg",
       "url": "https://commons.wikimedia.org/wiki/File:18.05.22_Kristianstad_X31K_4319+X31K_4402_(52094208294).jpg",
       "preview": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Oeresundstag%20x31%20-%20alvesta%20station.jpg?width=650",
@@ -533,7 +533,7 @@
     },
     "rail_snalltaget": {
       "title": "19.05.22 Lund Centralstation 193287 (52093971006).jpg",
-      "label": "Snälltåget – Vectron-Lokomotive in Stockholm",
+      "label": "Snälltåget – Vectron-Lokomotive in Lund",
       "url": "https://commons.wikimedia.org/wiki/File:19.05.22_Lund_Centralstation_193287_(52093971006).jpg",
       "groups": [
         "rail_snall"
@@ -584,7 +584,7 @@
     },
     "local_x15p_alt": {
       "title": "Stockholms östra SL X15p - 20240420 - 01.jpg",
-      "label": "Roslagsbanan – X15p bei Vallentuna",
+      "label": "Roslagsbanan – X15p bei Stockholms östra",
       "url": "https://commons.wikimedia.org/wiki/File:Stockholms_%C3%B6stra_SL_X15p_-_20240420_-_01.jpg",
       "groups": [
         "extra_local_x15p_alt"
@@ -592,7 +592,7 @@
     },
     "rail_oresund": {
       "title": "18.05.22 Kristianstad X31K 4319+X31K 4402 (52094208294).jpg",
-      "label": "Öresundståg X31 – am Bahnhof Alvesta",
+      "label": "Öresundståg X31 – am Bahnhof Kristianstad",
       "url": "https://commons.wikimedia.org/wiki/File:18.05.22_Kristianstad_X31K_4319+X31K_4402_(52094208294).jpg",
       "groups": [
         "extra_rail_oresund"

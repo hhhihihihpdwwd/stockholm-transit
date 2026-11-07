@@ -9,6 +9,7 @@ import collections
 import json
 import math
 from pathlib import Path
+from route_quality import valid_anchors
 
 ROOT=Path(__file__).resolve().parents[1]
 DATA=ROOT/'public/data'
@@ -71,14 +72,32 @@ def audit(data=DATA):
             key=(mode,short,operator)
             aggregate[key]['total']+=1
             if shape_id<0:
-                aggregate[key]['missing_shape']+=1
-                reason='missing_shape'
+                # Retain true OSM-only portions without claiming an entire
+                # service has a complete mapped alignment.
+                pieces=item[8] if len(item)>8 and isinstance(item[8],list) else []
+                valid_pieces=0
+                for piece in pieces:
+                    if len(piece)==4 and 0<=piece[0]<len(shapes) and valid_anchors(shapes[piece[0]],piece[3],piece[2]-piece[1]+1):
+                        valid_pieces+=1
+                if valid_pieces:
+                    aggregate[key]['partially_mapped']+=1
+                    aggregate[key]['partial_osm_pieces']+=valid_pieces
+                    reason='partial_route'
+                else:
+                    aggregate[key]['missing_shape']+=1
+                    reason='missing_shape'
             else:
                 aggregate[key]['has_shape']+=1
+                baked=item[7] if len(item)>7 else None
                 signature=(shape_id,tuple(s[0] for s in stop_rows),mode)
                 if signature not in cache:
-                    points=[stops[s[0]][:2] for s in stop_rows]
-                    cache[signature]=aligned(shapes[shape_id],points,mode)
+                    if valid_anchors(shapes[shape_id],baked,len(stop_rows)):
+                        # Anchors are generated at the same time as the OSM
+                        # graph path and kept through simplification.
+                        cache[signature]=(True,'renderable')
+                    else:
+                        points=[stops[s[0]][:2] for s in stop_rows]
+                        cache[signature]=aligned(shapes[shape_id],points,mode)
                 valid,reason=cache[signature]
                 aggregate[key]['displayable' if valid else 'not_displayable']+=1
                 if not valid:aggregate[key][reason]+=1
@@ -92,10 +111,10 @@ def audit(data=DATA):
                       'total':c['total'],'has_shape':c['has_shape'],
                       'displayable':c['displayable'],
                       'missing_shape':c['missing_shape'],
-                      'invalid_shape':c['not_displayable'],
+                      'invalid_shape':c['not_displayable'], 'partially_mapped':c['partially_mapped'], 'partial_osm_pieces':c['partial_osm_pieces'],
                       'percent':round(c['displayable']/c['total']*100,1),
                       'examples':examples[key]})
-    result={'description':'Route geometry that survives the same stop-to-shape snap calculation used by the map; displayability is NOT proof the rail/road is the actual service alignment.',
+    result={'description':'Full routes use OSM stop anchors if available, otherwise the original browser snap; partial routes contain only individually verified OSM subpaths, never fabricated gap connections.',
             'total_groups':len(lines),'unique_patterns_checked':len(cache),
             'totals':dict(sum_counters(aggregate.values())), 'lines':lines}
     (data/'display-coverage.json').write_text(json.dumps(result,ensure_ascii=False,separators=(',',':')))

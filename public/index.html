@@ -83,10 +83,10 @@ const layer=L.layerGroup().addTo(map),stationLayer=L.layerGroup().addTo(map);
 let net=null, schedules={},active=[],selected=null,follow=false,lastDate='',manifest=null,lastTick=0,shown=0,displayStopKey='',manualScrollUntil=0,photoCache=new Map(),displayCached=new Map(),pointsOnScreen=[];
 const enabled=new Set(MODES.map(m=>m[0]));
 for(const [mode,ico,label] of MODES){const b=document.createElement('button');b.className='filter'+(enabled.has(mode)?'':' off');b.dataset.mode=mode;b.innerHTML=`<span class="emoji">${ico}</span><span>${label}</span><span class="check">✓</span>`;b.onclick=()=>{if(enabled.has(mode)){enabled.delete(mode);b.classList.add('off')}else{enabled.add(mode);b.classList.remove('off')}drawDetail();};$('filters').append(b)}
-function stockholm(){const arr=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Stockholm',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date());const p={};for(const a of arr)p[a.type]=a.value;return {date:`${p.year}-${p.month}-${p.day}`,seconds:Number(p.hour)*3600+Number(p.minute)*60+Number(p.second),time:`${p.hour}:${p.minute}:${p.second}`}}
+function stockholm(stamp=Date.now()){const arr=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Stockholm',year:'numeric',month:'2-digit',day:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(stamp));const p={};for(const a of arr)p[a.type]=a.value;return {date:`${p.year}-${p.month}-${p.day}`,seconds:Number(p.hour)*3600+Number(p.minute)*60+Number(p.second)+(stamp%1000)/1000,time:`${p.hour}:${p.minute}:${p.second}`}}
 let clockReference=null,clockReferenceMs=0;
-function sampleClock(){clockReference=stockholm();clockReferenceMs=Date.now();return clockReference}
-function animationClock(){if(!clockReference)return sampleClock();return {date:clockReference.date,seconds:clockReference.seconds+(Date.now()-clockReferenceMs)/1000,time:clockReference.time}}
+function sampleClock(){clockReference=stockholm();clockReferenceMs=performance.now();return clockReference}
+function animationClock(){if(!clockReference)return sampleClock();return {date:clockReference.date,seconds:clockReference.seconds+(performance.now()-clockReferenceMs)/1000,time:clockReference.time}}
 function secTxt(s){if(!Number.isFinite(s))return '–';return `${String(Math.floor(s/3600)%24).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}`}
 function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function distance(a,b){if(!a||!b)return 0;const R=6371000,rad=Math.PI/180,p1=a[0]*rad,p2=b[0]*rad,dp=(b[0]-a[0])*rad,dl=(b[1]-a[1])*rad;const v=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.atan2(Math.sqrt(v),Math.sqrt(1-v))}
@@ -96,11 +96,39 @@ function geomAt(shape,cum,d){if(!shape?.length)return null;if(d<=0)return shape[
 function pathBetween(shape,cum,a,b){if(!shape?.length)return [];const out=[geomAt(shape,cum,a)];for(let i=1;i<cum.length-1;i++)if(cum[i]>a&&cum[i]<b)out.push(shape[i]);out.push(geomAt(shape,cum,b));return out}
 const geometryCache=new Map();
 function buildTrip(item,i,day){const [route,head,shapeId,stops]=item;if(stops.length<2||route>=net.routes.length)return null;const routeInfo=net.routes[route],geometry=net.shapes[shapeId]||null;const coords=stops.map(s=>net.stops[s[0]]);if(coords.some(x=>!x))return null;const shape=geometry?.length>1?geometry:null;let cum=null,anchors=null;
-if(shape){const cacheKey=shapeId+':'+stops.map(s=>s[0]).join(',');let cached=geometryCache.get(cacheKey);if(cached===undefined){let path=cumGeom(shape),indices=[],last=0,valid=true;for(const stop of coords){const projection=projectPoint(shape,stop,last);if(projection.d>(routeInfo[2]==='rail'?950:routeInfo[2]==='bus'?540:650)){valid=false;break}indices.push(projection.dist);last=projection.dist}cached=(valid&&indices.at(-1)-indices[0]>50)?[path,indices]:null;geometryCache.set(cacheKey,cached)}if(cached){cum=cached[0];anchors=cached[1]}}
-// Shape missing/inconsistent: use stop coordinates ONLY for endpoint display, never draw a fabricated street route.
-return {id:day+':'+i,route,info:routeInfo,head,stops,coords,shape:anchors?shape:null,cum,anchors,mode:routeInfo[2],shapeId,modelled:item[4]==='modelled',trainNo:item[5]||'',estimated:item[6]==='estimated-corridor',undergroundIds:new Set(net.tunnels?.[shapeId]||[]),start:stops[0][1],end:stops.at(-1)[2],day};}
+if(shape){
+ const baked=item[7]; // V11 OSM route: exact per-stop distances precomputed during graph routing.
+ const existing=geometryCache.get('s:'+shapeId);const path=existing||cumGeom(shape);
+ if(!existing)geometryCache.set('s:'+shapeId,path);
+ if(Array.isArray(baked)&&baked.length===stops.length&&baked.every(Number.isFinite)&&
+    baked.every((d,j)=>j===0||d>=baked[j-1]-.11)&&baked[0]>=0&&
+    baked.at(-1)<=path.at(-1)+3&&baked.at(-1)-baked[0]>40){
+   cum=path;anchors=baked;
+ }else{
+  const cacheKey=shapeId+':'+stops.map(s=>s[0]).join(',');
+  let cached=geometryCache.get(cacheKey);
+  if(cached===undefined){let indices=[],last=0,valid=true;for(const stop of coords){const projection=projectPoint(shape,stop,last);if(projection.d>(routeInfo[2]==='rail'?950:routeInfo[2]==='bus'?540:650)){valid=false;break}indices.push(projection.dist);last=projection.dist}cached=(valid&&indices.at(-1)-indices[0]>50)?[path,indices]:null;geometryCache.set(cacheKey,cached)}
+  if(cached){cum=cached[0];anchors=cached[1]}
+ }
+ // Bound caches on mobile devices; the next trip can rebuild safely if evicted.
+ if(geometryCache.size>8500){const stale=geometryCache.keys().next().value;geometryCache.delete(stale)}
+}
+// Preserve verified fragments even when one intervening bus leg is missing.
+const partialSegments=(!anchors&&Array.isArray(item[8]))?item[8].map(piece=>{
+ const [sid,start,end,distances]=piece,geom=net.shapes[sid];
+ if(!Array.isArray(geom)||geom.length<2||!Array.isArray(distances)||distances.length!==end-start+1)return null;
+ const key='s:'+sid,cc=geometryCache.get(key)||cumGeom(geom);
+ if(!geometryCache.has(key))geometryCache.set(key,cc);
+ if(!distances.every((d,j)=>Number.isFinite(d)&&(j===0||d>=distances[j-1]-.11))||
+    distances.at(-1)>cc.at(-1)+3)return null;
+ return {shape:geom,cum:cc,anchors:distances,start,end};
+}).filter(Boolean):[];
+// Do not invent a street/rail alignment when OSM has no matching geometry.
+return {id:day+':'+i,route,info:routeInfo,head,stops,coords,shape:anchors?shape:null,cum,anchors,segments:partialSegments,mode:routeInfo[2],shapeId,modelled:item[4]==='modelled',trainNo:item[5]||'',estimated:item[6]==='estimated-corridor',undergroundIds:new Set(net.tunnels?.[shapeId]||[]),start:stops[0][1],end:stops.at(-1)[2],day};}
 function updateActive(now){if(!net)return;const list=[];for(const [day,trips] of Object.entries(schedules)){const offset=day===now.date?0:(day<now.date?86400:-86400);const t=now.seconds+offset;for(let i=0;i<trips.length;i++){const trip=trips[i];if(t<trip[0]-90||t>trip[1]+75)continue;const key=day+':'+i;let v=displayCached.get(key);if(!v){v=buildTrip(trip[2],i,day);if(v){displayCached.set(key,v)}}if(v&&enabled.has(v.mode))list.push({v,t})}}
-active=list;const counts={};for(const x of list)counts[x.v.mode]=(counts[x.v.mode]||0)+1;$('count').innerHTML=`<strong>${list.length}</strong> planerade tåg/fordon`;if(selected&&!list.some(x=>x.v.id===selected.id)){selected=null;follow=false;layer.clearLayers();stationLayer.clearLayers();drawDetail(true)}
+active=list;
+if(displayCached.size>9000){const keep=new Set(list.map(x=>x.v.id));for(const key of displayCached.keys()){if(displayCached.size<=6500)break;if(!keep.has(key)&&selected?.id!==key)displayCached.delete(key)}}
+const counts={};for(const x of list)counts[x.v.mode]=(counts[x.v.mode]||0)+1;$('count').innerHTML=`<strong>${list.length}</strong> planerade tåg/fordon`;if(selected&&!list.some(x=>x.v.id===selected.id)){selected=null;follow=false;routeDraw(null);drawDetail(true)}
 }
 const SPEED_LIMIT={bus:90,metro:100,commuter:185,tram:85,localrail:130,rail:250,ferry:70};
 function progressFor(v,t){const s=v.stops;let idx=0;while(idx<s.length-1 && t>=s[idx][2])idx++;if(t<s[0][1])idx=0;if(t>=s.at(-1)[1])idx=s.length-1;
@@ -108,11 +136,16 @@ let position=v.coords[idx],velocity=0,dist=0,remain=0,invalidSpeed=false;
 if(idx>0&&t<s[idx][1]){
 const prev=idx-1,a=s[prev][2],b=s[idx][1],duration=Math.max(1,b-a);const raw=Math.max(0,Math.min(1,(t-a)/duration));
 // Smoothly accelerate and decelerate without changing arrival/departure times.
-const perHour=v.shape&&v.anchors?(v.anchors[idx]-v.anchors[Math.max(0,idx-1)])/duration*3.6:0;
+const visibleSegment=v.shape?null:v.segments?.find(x=>x.start<=prev&&x.end>=idx);
+const pathAnchors=v.shape?v.anchors:visibleSegment?.anchors;
+const from=v.shape?prev:prev-(visibleSegment?.start||0),to=v.shape?idx:idx-(visibleSegment?.start||0);
+const perHour=pathAnchors?(pathAnchors[to]-pathAnchors[from])/duration*3.6:0;
 const maxSpeed=SPEED_LIMIT[v.mode]||180;
 const ramp=perHour>maxSpeed*.82?0:Math.min(.10,Math.max(.012,6/duration));const eased=ramp===0?raw:(raw<ramp?raw*raw/(2*ramp*(1-ramp)):raw>1-ramp?1-(1-raw)*(1-raw)/(2*ramp*(1-ramp)):(raw-ramp/2)/(1-ramp));
 const slope=ramp===0?1:(raw<ramp?raw/(ramp*(1-ramp)):raw>1-ramp?(1-raw)/(ramp*(1-ramp)):1/(1-ramp));
-if(v.shape){const da=v.anchors[prev],db=v.anchors[idx];if(db>da+2){position=geomAt(v.shape,v.cum,da+(db-da)*eased);dist=(db-da)*(1-eased);velocity=(db-da)/duration*slope*3.6; if(velocity>maxSpeed*1.05)invalidSpeed=true;}}
+if(v.shape||visibleSegment){const da=pathAnchors[from],db=pathAnchors[to];
+const geom=v.shape?v.shape:visibleSegment.shape,cc=v.shape?v.cum:visibleSegment.cum;
+if(db>da+2){position=geomAt(geom,cc,da+(db-da)*eased);dist=(db-da)*(1-eased);velocity=(db-da)/duration*slope*3.6; if(velocity>maxSpeed*1.05)invalidSpeed=true;}}
 else { // No invented straight railway track: hold at last scheduled station.
 const aPos=v.coords[prev],bPos=v.coords[idx];
 // Missing street/rail geometry: keep the last known stop, never cross water.
@@ -188,32 +221,74 @@ let lastDraw=0,frame=0,lastRouteUpdate=0,lastClockPaint=0;
 let visibleBounds=map.getBounds().pad(.12),visibleZoom=map.getZoom();
 function updateViewport(){visibleBounds=map.getBounds().pad(.12);visibleZoom=map.getZoom()}
 map.on('move zoom resize',updateViewport);
-function render(ts){frame=requestAnimationFrame(render);if(ts-lastDraw<(active.length>700?32:14))return;lastDraw=ts;const ctx=canvasLayer.ctx;if(!ctx||!net)return;const size=map.getSize();ctx.clearRect(0,0,size.x,size.y);const now=animationClock();if(ts-lastClockPaint>850){lastClockPaint=ts;const secs=Math.floor(now.seconds)%86400;$('clock').textContent=secTxt(secs)+':'+String(secs%60).padStart(2,'0')+' · Sverige'}const bounds=visibleBounds,zoom=visibleZoom;let choices=active; // limit drawing at wide zoom for mobile speed
+function render(ts){frame=requestAnimationFrame(render);if(ts-lastDraw<(active.length>900?32:active.length>450?22:16))return;lastDraw=ts;const ctx=canvasLayer.ctx;if(!ctx||!net)return;const size=map.getSize();ctx.clearRect(0,0,size.x,size.y);const now=animationClock();if(ts-lastClockPaint>850){lastClockPaint=ts;const secs=Math.floor(now.seconds)%86400;$('clock').textContent=secTxt(secs)+':'+String(secs%60).padStart(2,'0')+' · Sverige'}const bounds=visibleBounds,zoom=visibleZoom;let choices=active; // limit drawing at wide zoom for mobile speed
 if(zoom<9&&choices.length>500){const step=Math.ceil(choices.length/500);choices=choices.filter((_,i)=>i%step===0||choices[i].v===selected)}
-pointsOnScreen=[];for(const {v,t} of choices){const pg=progressFor(v,now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0));if(!pg.pos||!bounds.contains(pg.pos))continue;const p=map.latLngToLayerPoint(pg.pos).subtract(canvasLayer.origin);p.underground=undergroundHere(v,pg);const clickP=map.latLngToContainerPoint(pg.pos);const isSel=v.id===selected?.id;drawVehicle(ctx,p,v,isSel);pointsOnScreen.push({p:clickP,v,pg})}if(selected){const found=pointsOnScreen.find(p=>p.v.id===selected.id);if(found&&follow&&ts-lastTick>1400){lastTick=ts;const center=map.getCenter(),want=found.pg.pos;if(map.distance(center,want)>160)map.panTo(want,{animate:true,duration:1.25})}if(ts-lastDetailDraw>1200)drawDetail();if(ts-lastRouteUpdate>4000){lastRouteUpdate=ts;routeDraw(selected,progressFor(selected,now.seconds+(selected.day<now.date?86400:selected.day>now.date?-86400:0)),false)}} }
+pointsOnScreen=[];for(const {v,t} of choices){const pg=progressFor(v,now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0));if(!pg.pos||!bounds.contains(pg.pos))continue;const p=map.latLngToLayerPoint(pg.pos).subtract(canvasLayer.origin);p.underground=undergroundHere(v,pg);const clickP=map.latLngToContainerPoint(pg.pos);const isSel=v.id===selected?.id;drawVehicle(ctx,p,v,isSel);pointsOnScreen.push({p:clickP,v,pg})}if(selected){const found=pointsOnScreen.find(p=>p.v.id===selected.id);if(found&&follow&&ts-lastTick>1400){lastTick=ts;const center=map.getCenter(),want=found.pg.pos;if(map.distance(center,want)>160)map.panTo(want,{animate:true,duration:1.25})}if(ts-lastDetailDraw>1200)drawDetail();if(ts-lastRouteUpdate>850){lastRouteUpdate=ts;routeDraw(selected,progressFor(selected,now.seconds+(selected.day<now.date?86400:selected.day>now.date?-86400:0)),false)}} }
 let lastDetailDraw=0;
-function routeDraw(v,pg,rebuildStations=true){layer.clearLayers();if(rebuildStations)stationLayer.clearLayers();if(!v)return;const {shape,cum,anchors}=v;
-if(shape&&cum&&anchors){const a=anchors[0],b=anchors.at(-1);let current=anchors[pg.index];if(pg.index>0&&pg.index<v.stops.length&&pg.distance>0)current=Math.max(a,Math.min(b,anchors[pg.index]-pg.distance));
-L.polyline(pathBetween(shape,cum,current,b),{color:'#899da9',weight:4,opacity:.76,lineCap:'round',dashArray:v.estimated?'6 8':undefined}).addTo(layer);
-L.polyline(pathBetween(shape,cum,a,current),{color:'#238fdb',weight:5,opacity:.95,lineCap:'round',dashArray:v.estimated?'6 8':undefined}).addTo(layer);
-// Clearly mark only confirmed OSM underground rail segments (do not dim surface tracks).
-if(v.mode==='metro' && v.undergroundIds?.size){
- const underground=v.undergroundIds;
- for(let i=1;i<shape.length;i++){
-  if(!underground.has(i)&&!underground.has(i-1))continue;
-  const d0=cum[i-1],d1=cum[i];if(d1<a||d0>b)continue;
-  const start=geomAt(shape,cum,Math.max(a,d0)),end=geomAt(shape,cum,Math.min(b,d1));
-  L.polyline([start,end],{color:'#b7c4cd',weight:3,opacity:.65,dashArray:'3 5',interactive:false}).addTo(layer);
+let currentRouteId=null,routeGrey=null,routeBlue=null,segmentLines=[];
+function routeDraw(v,pg,rebuildStations=true){
+ if(!v){layer.clearLayers();stationLayer.clearLayers();currentRouteId=null;routeGrey=null;routeBlue=null;segmentLines=[];return}
+ const changed=currentRouteId!==v.id;
+ if(changed){layer.clearLayers();stationLayer.clearLayers();currentRouteId=v.id;routeGrey=null;routeBlue=null;segmentLines=[]}
+ const {shape,cum,anchors}=v;
+ if(shape&&cum&&anchors){
+  const a=anchors[0],b=anchors.at(-1);
+  let current=anchors[pg.index];
+  if(pg.index>0&&pg.index<v.stops.length&&pg.distance>0)current=Math.max(a,Math.min(b,anchors[pg.index]-pg.distance));
+  const future=pathBetween(shape,cum,current,b),past=pathBetween(shape,cum,a,current);
+  if(!routeGrey){
+   routeGrey=L.polyline(future,{color:'#899da9',weight:4,opacity:.76,lineCap:'round',interactive:false}).addTo(layer);
+   routeBlue=L.polyline(past,{color:'#238fdb',weight:5,opacity:.95,lineCap:'round',interactive:false}).addTo(layer);
+  }else{routeGrey.setLatLngs(future);routeBlue.setLatLngs(past)}
+  // Tunnel overlay is STATIC for the entire selection; rebuilding it every
+  // 750ms was the source of visible flicker and expensive Leaflet redraws.
+  if(changed&&v.mode==='metro'&&v.undergroundIds?.size){
+   for(let i=1;i<shape.length;i++){
+    if(!v.undergroundIds.has(i)&&!v.undergroundIds.has(i-1))continue;
+    const d0=cum[i-1],d1=cum[i];if(d1<a||d0>b)continue;
+    L.polyline([geomAt(shape,cum,Math.max(a,d0)),geomAt(shape,cum,Math.min(b,d1))],
+       {color:'#b7c4cd',weight:3,opacity:.65,dashArray:'3 5',interactive:false}).addTo(layer);
+   }
+  }
+ }
+ // Publish only known OSM segments; do not connect across an unrouted gap.
+ if(!shape && v.segments?.length){
+  for(let si=0;si<v.segments.length;si++){
+   const seg=v.segments[si],a=seg.anchors[0],b=seg.anchors.at(-1);
+   let current=a;
+   if(pg.index>seg.end)current=b;
+   else if(pg.index>=seg.start){
+    current=seg.anchors[pg.index-seg.start];
+    if(pg.index>seg.start&&pg.distance>0)current-=pg.distance;
+   }
+   current=Math.max(a,Math.min(b,current));
+   const future=pathBetween(seg.shape,seg.cum,current,b),past=pathBetween(seg.shape,seg.cum,a,current);
+   if(!segmentLines[si]){
+    const grey=L.polyline(future,{color:'#899da9',weight:3,opacity:.8,interactive:false,dashArray:'6 6'}).addTo(layer);
+    const blue=L.polyline(past,{color:'#238fdb',weight:5,opacity:.95,interactive:false}).addTo(layer);
+    segmentLines[si]={grey,blue};
+   }else{
+    segmentLines[si].grey.setLatLngs(future);
+    segmentLines[si].blue.setLatLngs(past);
+   }
+  }
+ }
+ if(changed||rebuildStations){
+  stationLayer.clearLayers();
+  for(let i=0;i<v.stops.length;i++){
+   const p=v.coords[i],passed=i<pg.index;
+   L.circleMarker(p,{radius:i===pg.index?6:3,fillColor:i===pg.index?'#fff47c':passed?'#69848f':'#f2e22a',fillOpacity:1,color:'#243e49',weight:2}).addTo(stationLayer)
+    .bindTooltip(escapeHTML(net.stops[v.stops[i][0]][2]),{direction:'top'});
+  }
  }
 }
-}
-if(rebuildStations)for(let i=0;i<v.stops.length;i++){const p=v.coords[i],passed=i<pg.index;L.circleMarker(p,{radius:i===pg.index?6:3,fillColor:i===pg.index?'#fff47c':passed?'#69848f':'#f2e22a',fillOpacity:1,color:'#243e49',weight:2}).addTo(stationLayer).bindTooltip(escapeHTML(net.stops[v.stops[i][0]][2]),{direction:'top'})}}
+
 function updateStops(v,pg){const key=v.id+':'+pg.index;if(key===displayStopKey)return;displayStopKey=key;const html=v.stops.map((s,i)=>`<div class="stop ${i<pg.index?'passed':i===pg.index?'next':''}" data-idx="${i}"><span class="dot"></span><span class="stopName">${escapeHTML(net.stops[s[0]][2])}</span><span class="stopAt">${secTxt(s[1])}</span></div>`).join('');$('stopScroll').innerHTML=html;const node=$('stopScroll').querySelector('.next');if(node && Date.now()>manualScrollUntil)requestAnimationFrame(()=>{if(key!==displayStopKey)return;const list=$('stopScroll');const r=node.getBoundingClientRect(),outer=list.getBoundingClientRect();const target=list.scrollTop+r.top-outer.top-(list.clientHeight-r.height)/2;list.scrollTo({top:Math.max(0,target),behavior:'smooth'})})}
 $('stopScroll').addEventListener('wheel',()=>manualScrollUntil=Date.now()+15000,{passive:true});$('stopScroll').addEventListener('touchstart',()=>manualScrollUntil=Date.now()+15000,{passive:true});
 function drawDetail(force=false){if(!net)return;const now=stockholm();if(!selected){if(force){$('vehicleTitle').textContent='Stockholm / Sverige';$('vehicleSub').textContent='Klicka på ett fordon på kartan';$('routeBox').textContent='SE';$('routeBox').style.setProperty('--route','#237ed5');$('nextName').textContent='Inget fordon valt';$('nextTime').textContent='—';$('stopScroll').innerHTML='<div class="empty">Välj en buss, tunnelbana, pendeltåg eller annat fordon på kartan.</div>';$('speed').textContent='—';$('distance').textContent='—';$('remaining').textContent='—';$('photo').style.display='none';$('follow').disabled=true;displayStopKey='';}return}
-lastDetailDraw=performance.now();let v=selected;const time=now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0),pg=progressFor(v,time),stop=v.stops[pg.index],route=v.info;const mode=MODES.find(m=>m[0]===v.mode);$('routeBox').textContent=route[0]?.slice(0,11)||mode?.[1]||'SL';$('routeBox').style.setProperty('--route','#'+route[3]);$('vehicleTitle').textContent=v.head||route[1]||'Fordon';$('vehicleSub').textContent=(mode?.[2]||'Fordon')+' · '+(route[4]||'SL')+(v.shape?(v.estimated?' · uppskattad korridor':' · kartlagd färdväg'):' · färdväg saknas');$('nextName').textContent=net.stops[stop[0]][2];$('nextTime').textContent=secTxt(stop[1]);$('progressText').textContent=pg.index+'/'+(v.stops.length-1)+' · SIMULERAT';$('speed').textContent=pg.speed===null?'— km/h':Math.round(pg.speed)+' km/h';$('distance').textContent=pg.distance>0?(pg.distance/1000).toFixed(1)+' km':'0 km';$('remaining').textContent=pg.remaining>60?Math.ceil(pg.remaining/60)+' min':pg.remaining+' s';$('follow').disabled=false;updateStops(v,pg);if(force)routeDraw(v,pg)}
+lastDetailDraw=performance.now();let v=selected;const time=now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0),pg=progressFor(v,time),stop=v.stops[pg.index],route=v.info;const mode=MODES.find(m=>m[0]===v.mode);$('routeBox').textContent=route[0]?.slice(0,11)||mode?.[1]||'SL';$('routeBox').style.setProperty('--route','#'+route[3]);$('vehicleTitle').textContent=v.head||route[1]||'Fordon';$('vehicleSub').textContent=(mode?.[2]||'Fordon')+' · '+(route[4]||'SL')+(v.shape?(v.estimated?' · uppskattad korridor':' · kartlagd färdväg'):v.segments?.length?' · delvis kartlagd färdväg':' · färdväg saknas');$('nextName').textContent=net.stops[stop[0]][2];$('nextTime').textContent=secTxt(stop[1]);$('progressText').textContent=pg.index+'/'+(v.stops.length-1)+' · SIMULERAT';$('speed').textContent=pg.speed===null?'— km/h':Math.round(pg.speed)+' km/h';$('distance').textContent=pg.distance>0?(pg.distance/1000).toFixed(1)+' km':'0 km';$('remaining').textContent=pg.remaining>60?Math.ceil(pg.remaining/60)+' min':pg.remaining+' s';$('follow').disabled=false;updateStops(v,pg);if(force)routeDraw(v,pg)}
 function selectVehicle(v){selected=v;follow=false;$('follow').textContent='◎ Följ fordon';displayStopKey='';manualScrollUntil=0;const now=stockholm();const pg=progressFor(v,now.seconds+(v.day<now.date?86400:v.day>now.date?-86400:0));if(pg.pos)map.flyTo(pg.pos,Math.max(11,map.getZoom()),{duration:.75});drawDetail(true);showImage(v)}
-function clear(){selected=null;follow=false;layer.clearLayers();stationLayer.clearLayers();$('follow').textContent='◎ Följ fordon';drawDetail(true)}
+function clear(){selected=null;follow=false;routeDraw(null);$('follow').textContent='◎ Följ fordon';drawDetail(true)}
 $('clear').onclick=clear;$('overview').onclick=()=>{clear();map.flyToBounds(defaultBounds,{padding:[28,28],maxZoom:11,duration:1})};$('swedenView').onclick=()=>{clear();map.flyToBounds(swedenBounds,{padding:[28,28],maxZoom:6,duration:1.2})};$('follow').onclick=()=>{follow=!follow;$('follow').textContent=follow?'◎ Följer fordon':'◎ Följ fordon'};
 // Fast local search across the loaded historical Stockholm database.
 // No search queries are sent to Trafiklab or another service.
@@ -261,6 +336,7 @@ searchResults.onclick=e=>{
 };
 map.on('click',e=>{const p=map.latLngToContainerPoint(e.latlng);let best=null,d=25;for(const candidate of pointsOnScreen){const dist=Math.hypot(p.x-candidate.p.x,p.y-candidate.p.y);if(dist<d){d=dist;best=candidate}}if(best)selectVehicle(best.v)});
 // On-site media library: no arbitrary Commons search or runtime image hotlinks.
+const APPROVED_PHOTOS={"metro_c20_blue":{"title":"Kungsträdgården Metro, SL C20, 20240525 - 25.jpg","source":"https://commons.wikimedia.org/wiki/File:Kungstr%C3%A4dg%C3%A5rden_Metro,_SL_C20,_20240525_-_25.jpg","label":"Tunnelbana C20 – an der Station Kungsträdgården"},"metro_c30":{"title":"Stockholm metro - SL C30 (1).jpg","source":"https://commons.wikimedia.org/wiki/File:Stockholm_metro_-_SL_C30_(1).jpg","label":"Metro 14"},"metro_c20_green":{"title":"SL C20 Gamla Stan, Stockholm.jpg","source":"https://commons.wikimedia.org/wiki/File:SL_C20_Gamla_Stan,_Stockholm.jpg","label":"Tunnelbana C20 – Außenaufnahme"},"commuter_x60":{"title":"SL X60, Stockholm Centralstation, 20240106 - 06.jpg","source":"https://commons.wikimedia.org/wiki/File:SL_X60%2C_Stockholm_Centralstation%2C_20240106_-_06.jpg","label":"Commuter X60"},"tram_city7":{"title":"A35 på Spårväg City.jpg","source":"https://commons.wikimedia.org/wiki/File:A35_p%C3%A5_Sp%C3%A5rv%C3%A4g_City.jpg","label":"Spårväg City – A35 auf Linie 7"},"tram_nockeby12":{"title":"2024-07-23 3248 SL A32 427 på linje 12 i Alvik.jpg","source":"https://commons.wikimedia.org/wiki/File:2024-07-23_3248_SL_A32_427_p%C3%A5_linje_12_i_Alvik.jpg","label":"Nockebybanan – A32 auf Linie 12"},"tram_a35":{"title":"2015-08-29 1726 SL A35 463 mellan Ulvsundabron och Tranebergstunneln.jpg","source":"https://commons.wikimedia.org/wiki/File:2015-08-29_1726_SL_A35_463_mellan_Ulvsundabron_och_Tranebergstunneln.jpg","label":"Tram Tvar30"},"local_saltsjo":{"title":"Saltsjöbanan at Saltsjöbaden station.jpg","source":"https://commons.wikimedia.org/wiki/File:Saltsj%C3%B6banan_at_Saltsj%C3%B6baden_station.jpg","label":"Local Saltsjo"},"local_x15p":{"title":"X15p vid Visinge station.jpg","source":"https://commons.wikimedia.org/wiki/File:X15p_vid_Visinge_station.jpg","label":"Local Roslag"},"ferry_djurgarden10":{"title":"Djurgården 10.jpg","source":"https://commons.wikimedia.org/wiki/File:Djurg%C3%A5rden_10.jpg","label":"Ferry 89"},"ferry_84":{"title":"Eskil November 2024 01.jpg","source":"https://commons.wikimedia.org/wiki/File:Eskil_November_2024_01.jpg","label":"Ferry 84"},"rail_x2000":{"title":"X2000 I Malmö Mot Stockholm.jpg","source":"https://commons.wikimedia.org/wiki/File:X2000_I_Malm%C3%B6_Mot_Stockholm.jpg","label":"SJ X2000 – Zug in Malmö"},"rail_sj3000":{"title":"Stockholm Central, SJ 3000 - 20260327 - 03.jpg","source":"https://commons.wikimedia.org/wiki/File:Stockholm_Central%2C_SJ_3000_-_20260327_-_03.jpg","label":"Rail X55"},"rail_sj_x40":{"title":"SJ X40, Köping - 20260513 - 01.jpg","source":"https://commons.wikimedia.org/wiki/File:SJ_X40,_K%C3%B6ping_-_20260513_-_01.jpg","label":"SJ X40 – Regionalzug in Köping"},"rail_sj_rc6":{"title":"SJ Rc 1383 Stockholm Central.jpg","source":"https://commons.wikimedia.org/wiki/File:SJ_Rc_1383_Stockholm_Central.jpg","label":"Rail Rc6"},"rail_malartag":{"title":"Sverige Mälartåg ER1 111, Gävle IMG 6437.jpg","source":"https://commons.wikimedia.org/wiki/File:Sverige_M%C3%A4lart%C3%A5g_ER1_111%2C_G%C3%A4vle_IMG_6437.jpg","label":"Rail Er1"},"rail_arlanda":{"title":"Arlanda Express X3.JPG","source":"https://commons.wikimedia.org/wiki/File:Arlanda_Express_X3.JPG","label":"Rail X3"},"rail_snalltaget":{"title":"19.05.22 Lund Centralstation 193287 (52093971006).jpg","source":"https://commons.wikimedia.org/wiki/File:19.05.22_Lund_Centralstation_193287_(52093971006).jpg","label":"Snälltåget – Vectron-Lokomotive in Lund"},"rail_vr_x74":{"title":"VR X74 1.jpg","source":"https://commons.wikimedia.org/wiki/File:VR_X74_1.jpg","label":"Rail Vrx74"},"bus_blue2":{"title":"SL bus line 2 at Norrmalmstorg.jpg","source":"https://commons.wikimedia.org/wiki/File:SL_bus_line_2_at_Norrmalmstorg.jpg","label":"Bus Blue Articulated"},"bus_red69":{"title":"SL bus line 69 at Norrmalmstorg.jpg","source":"https://commons.wikimedia.org/wiki/File:SL_bus_line_69_at_Norrmalmstorg.jpg","label":"Bus Electric"},"bus_red75":{"title":"SL Buss 75, Stockholm - 20240430 - 14.jpg","source":"https://commons.wikimedia.org/wiki/File:SL_Buss_75%2C_Stockholm_-_20240430_-_14.jpg","label":"Bus Regional"},"commuter_x60_alt":{"title":"SL X60, Stockholm Centralstation, 20240106 - 02.jpg","source":"https://commons.wikimedia.org/wiki/File:SL_X60%2C_Stockholm_Centralstation%2C_20240106_-_02.jpg","label":"Extra Commuter X60 Alt"},"local_x15p_alt":{"title":"Stockholms östra SL X15p - 20240420 - 01.jpg","source":"https://commons.wikimedia.org/wiki/File:Stockholms_%C3%B6stra_SL_X15p_-_20240420_-_01.jpg","label":"Roslagsbanan – X15p bei Stockholms östra"},"rail_oresund":{"title":"18.05.22 Kristianstad X31K 4319+X31K 4402 (52094208294).jpg","source":"https://commons.wikimedia.org/wiki/File:18.05.22_Kristianstad_X31K_4319+X31K_4402_(52094208294).jpg","label":"Öresundståg X31 – am Bahnhof Kristianstad"}};
 let photoCatalog={};let photoRequest=0;
 function photoFallbackFor(mode,v){
  const el=$('photoFallback');el.style.display='grid';el.innerHTML='';
@@ -270,9 +346,9 @@ function photoCandidates(v){
  const line=String(v.info?.[0]||'').trim();
  const name=(line+' '+(v.info?.[1]||'')+' '+(v.head||'')+' '+(v.info?.[4]||'')).toLocaleLowerCase('sv-SE');
  const agency=String(v.info?.[4]||'').toLocaleLowerCase('sv-SE');
- if(v.mode==='metro')return ['13','14'].includes(line)?['metro_c30','metro_c20']:['metro_c20','metro_c30'];
+ if(v.mode==='metro')return ['13','14'].includes(line)?['metro_c30']:['10','11'].includes(line)?['metro_c20_blue']:['17','18','19'].includes(line)?['metro_c20_green']:['metro_c20_green','metro_c20_blue'];
  if(v.mode==='commuter')return ['commuter_x60','commuter_x60_alt'];
- if(v.mode==='tram')return ['tram_a35','tram_a32'];
+ if(v.mode==='tram')return line==='7'?['tram_city7']:line==='12'?['tram_nockeby12']:['tram_a35','tram_a32'];
  if(v.mode==='localrail'){
    if(['25','26'].includes(line)||name.includes('saltsjö'))return ['local_saltsjo'];
    if(['27','28','29'].includes(line)||name.includes('roslags'))return ['local_x15p','local_x15p_alt'];
@@ -288,7 +364,7 @@ function photoCandidates(v){
    if(name.includes('x40')||name.includes('dubbeldäck'))return ['rail_sj_x40'];
    if(name.includes('x2000')||name.includes('sj snabbtåg'))return ['rail_x2000'];
    if(name.includes('intercity')||name.includes('nattåg')||name.includes('rc6'))return ['rail_sj_rc6'];
-   if(agency.includes('sj'))return ['rail_sj_rc6','rail_x2000']; // SJ generic only; train type unknown.
+   if(agency.includes('sj'))return []; // Do not guess SJ train model.
    return [];
  }
  if(v.mode==='ferry'){
@@ -297,8 +373,8 @@ function photoCandidates(v){
    return []; // Never substitute Djurgårdsfärjan for another boat line.
  }
  if(v.mode==='bus'){
-   if(!agency.includes('storstockholm')&&!agency.includes('sl '))return []; // No false SL photo for UL/Flixbus/Vy.
-   if(['1','2','3','4','6'].includes(line))return ['bus_blue2','bus_red69'];
+   if(!(agency==='sl'||/(^|\W)sl($|\W)/.test(agency)||agency.includes('storstockholm')||agency.includes('stockholms lokaltrafik')))return []; // SL only: no incorrect UL/Flixbus/Vy vehicles.
+   if(['1','2','3','4','6'].includes(line))return ['bus_blue2'];
    if(line==='69')return ['bus_red69','bus_red75'];
    if(line==='75')return ['bus_red75','bus_red69'];
    return ['bus_red69','bus_red75'];
@@ -310,34 +386,48 @@ function showImage(v){
  const image=$('photoImg');image.hidden=true;image.removeAttribute('src');
  $('photo').style.display='block';$('photoCredit').hidden=true;
  photoFallbackFor(v.mode,v);$('photoNote').textContent='Illustration · fordonstyp inte verifierad';
- const candidates=photoCandidates(v).filter(k=>photoCatalog[k] && typeof photoCatalog[k].path==='string');
+ const candidates=photoCandidates(v).filter(k=>photoCatalog[k] || APPROVED_PHOTOS[k]);
  function tryPhoto(i){
    if(token!==photoRequest||selected!==v)return;
-   if(i>=candidates.length){$('photoNote').textContent='Fordonssymbol · inget lokalt foto för denna fordonstyp';$('photoCredit').hidden=true;return;}
-   const item=photoCatalog[candidates[i]],probe=new Image();
-   probe.onload=()=>{if(token!==photoRequest||selected!==v)return;
-     image.src=item.path;image.hidden=false;$('photoFallback').style.display='none';
-     $('photoNote').textContent=item.label+' · exempelbild, inte exakt tur';
-     if(item.source){$('photoCredit').hidden=false;$('photoCredit').href=item.source;
-       $('photoCredit').textContent=((item.author||'Fotograf')+' · '+(item.license||'Bildkälla')).slice(0,90)+' ↗';}
-   };
-   probe.onerror=()=>{console.warn('Local image unreadable:',candidates[i],item.path);tryPhoto(i+1);};
-   probe.src=item.path;
+   if(i>=candidates.length){$('photoNote').textContent='Fordonssymbol · inget verifierat foto kunde laddas';$('photoCredit').hidden=true;return;}
+   const key=candidates[i],item=photoCatalog[key]||APPROVED_PHOTOS[key];
+   const exact=APPROVED_PHOTOS[key];
+   // URL is derived from the exact file the user approved, NEVER a search result.
+   const commons=exact?'https://commons.wikimedia.org/wiki/Special:Redirect/file/'+encodeURIComponent(exact.title)+'?width=820':null;
+   const commonsOriginal=exact?'https://commons.wikimedia.org/wiki/Special:Redirect/file/'+encodeURIComponent(exact.title):null;
+   const urls=[item.path?(item.path+'?v='+encodeURIComponent(manifest?.generated||'v11')):null,commons,commonsOriginal].filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j);
+   function tryUrl(j){
+     if(token!==photoRequest||selected!==v)return;
+     if(j>=urls.length){tryPhoto(i+1);return;}
+     const probe=new Image();
+     probe.onload=()=>{
+       if(token!==photoRequest||selected!==v)return;
+       image.src=urls[j];image.hidden=false;$('photoFallback').style.display='none';
+       $('photoNote').textContent=(item.label||exact?.label||'Fordon')+' · exempelbild, inte exakt tur';
+       const source=item.source||exact?.source;
+       if(source){$('photoCredit').hidden=false;$('photoCredit').href=source;
+         $('photoCredit').textContent=((item.author||'Foto: Wikimedia Commons')+' · '+(item.license||'Wikimedia Commons ↗')).slice(0,90);}
+     };
+     probe.onerror=()=>{console.warn('Approved photo unavailable',key,urls[j]);tryUrl(j+1)};
+     probe.src=urls[j];
+   }
+   tryUrl(0);
  }
+
  tryPhoto(0);
 }
-async function readJson(url){const res=await fetch(url,{cache:'no-cache'});if(!res.ok)throw Error('HTTP '+res.status+' för '+url);return res.json()}
-async function load(){try{manifest=await readJson('data/manifest.json');net=await readJson('data/network.json');
-try{photoCatalog=await readJson('assets/photos/catalog.json')}catch(e){photoCatalog={};console.warn('Local photos not available; using vehicle illustrations')}$('source').textContent='Källor: '+manifest.sources.join(', ')+' · Arkiv '+(manifest.snapshot||'')+' · inte aktuella trafikuppgifter';$('simStatus').textContent='Historisk veckosimulering · kompletterad trafik · ingen GPS';const today=stockholm().date;
+async function readJson(url){const res=await fetch(url,{cache:url.includes('manifest.json')?'no-cache':'default'});if(!res.ok)throw Error('HTTP '+res.status+' för '+url);return res.json()}
+async function load(){try{manifest=await readJson('data/manifest.json');const rev='?v='+encodeURIComponent(manifest.generated||manifest.snapshot||'v11');net=await readJson('data/network.json'+rev);
+try{photoCatalog=await readJson('assets/photos/catalog.json'+rev)}catch(e){photoCatalog={};console.warn('Local photo catalog unavailable; using exclusively approved Commons source URLs')}$('source').textContent='Källor: '+manifest.sources.join(', ')+' · Arkiv '+(manifest.snapshot||'')+' · inte aktuella trafikuppgifter';$('simStatus').textContent='Historisk veckosimulering · kompletterad trafik · ingen GPS';const today=stockholm().date;
 // Historical archive repeated as a representative weekday/weekend schedule;
 // map the 7 archived dates onto yesterday/today/tomorrow without new downloads.
 const targets=[-1,0,1].map(delta=>{const d=new Date(today+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+delta);return d.toISOString().slice(0,10)});
 if(manifest.weekly_repeat){
  const byWeekday=new Map(manifest.dates.map(date=>[new Date(date+'T12:00:00Z').getUTCDay(),date]));
  for(const target of targets){const sample=byWeekday.get(new Date(target+'T12:00:00Z').getUTCDay());if(!sample)continue;
-  try{const json=await readJson('data/'+sample+'.json');schedules[target]=json.trips.map(x=>[x[3][0][1],x[3].at(-1)[2],x])}catch(e){console.warn(e)}
+  try{const json=await readJson('data/'+sample+'.json'+rev);schedules[target]=json.trips.map(x=>[x[3][0][1],x[3].at(-1)[2],x])}catch(e){console.warn(e)}
  }
-}else{for(const date of manifest.dates){try{const json=await readJson('data/'+date+'.json');schedules[date]=json.trips.map(x=>[x[3][0][1],x[3].at(-1)[2],x])}catch(e){console.warn(e)}}}$('dateText').textContent=today;$('statusTitle').textContent='Tidtabellssimulering aktiv';if(net?.meta?.stockholm_bounds){const b=net.meta.stockholm_bounds;defaultBounds[0]=[b[0],b[2]];defaultBounds[1]=[b[1],b[3]]}if(net?.meta?.national_bounds){const b=net.meta.national_bounds;swedenBounds[0]=[b[0],b[2]];swedenBounds[1]=[b[1],b[3]]}$('statusText').textContent='Arkiv '+(manifest.snapshot||'')+' · återanvända veckodagar · ingen aktuell tidtabell';$('count').classList.remove('loadingPulse');drawDetail(true);tick();requestAnimationFrame(render)}catch(e){$('statusTitle').textContent='Data saknas';$('statusText').innerHTML='Ingen färdig tidtabell hittades. Starta GitHub Actions-jobbet <b>Build Stockholm timetable</b> med en Trafiklab GTFS Regional-nyckel.';$('simStatus').textContent='Inställning krävs';$('count').innerHTML='<strong>0</strong> fordon';console.error(e)}}
+}else{for(const date of manifest.dates){try{const json=await readJson('data/'+date+'.json'+rev);schedules[date]=json.trips.map(x=>[x[3][0][1],x[3].at(-1)[2],x])}catch(e){console.warn(e)}}}$('dateText').textContent=today;$('statusTitle').textContent='Tidtabellssimulering aktiv';if(net?.meta?.stockholm_bounds){const b=net.meta.stockholm_bounds;defaultBounds[0]=[b[0],b[2]];defaultBounds[1]=[b[1],b[3]]}if(net?.meta?.national_bounds){const b=net.meta.national_bounds;swedenBounds[0]=[b[0],b[2]];swedenBounds[1]=[b[1],b[3]]}$('statusText').textContent='Arkiv '+(manifest.snapshot||'')+' · återanvända veckodagar · ingen aktuell tidtabell';$('count').classList.remove('loadingPulse');drawDetail(true);tick();requestAnimationFrame(render)}catch(e){$('statusTitle').textContent='Data saknas';$('statusText').innerHTML='Ingen färdig tidtabell hittades. Starta GitHub Actions-jobbet <b>Stockholm Transit V11 - Stable photos, mapped routes, smooth movement</b> och kontrollera datarapporten.';$('simStatus').textContent='Inställning krävs';$('count').innerHTML='<strong>0</strong> fordon';console.error(e)}}
 function tick(){const now=sampleClock();if(lastDate!==now.date){if(lastDate&&manifest?.weekly_repeat){location.reload();return}lastDate=now.date;$('dateText').textContent=now.date;if(manifest&&!manifest.weekly_repeat&&!manifest.dates.includes(now.date)){$('statusTitle').textContent='Tidtabell behöver uppdateras';$('statusText').textContent='GitHub Actions måste publicera aktuella trafikdygn.'}}updateActive(now);if(selected)drawDetail();setTimeout(tick,1500)}
 sampleClock();window.addEventListener('resize',()=>setTimeout(()=>map.invalidateSize(),100));new ResizeObserver(()=>map.invalidateSize({pan:false})).observe($('map'));load();
 })();
