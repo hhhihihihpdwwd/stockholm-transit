@@ -1,4 +1,4 @@
-name: Stockholm Transit V9.1 - Routes and photo repair
+name: Stockholm Transit V10 - Static photos and national routes
 
 on:
   workflow_dispatch:
@@ -28,36 +28,13 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq osmium-tool
           python -m pip install --disable-pip-version-check osmium
-      - name: Restore previously downloaded attributed photos
-        uses: actions/cache/restore@v4
-        with:
-          path: public/assets/photos
-          key: stockholm-photos-${{ github.run_id }}
-          restore-keys: |
-            stockholm-photos-
       - name: Generate national railway geometry and Stockholm street timetable
         env:
           GTFS_ARCHIVE_URL: https://data.samtrafiken.se/trafiklab/gtfs-sverige-2/2026/11/sweden-20261104.zip
-          PHOTO_DOWNLOAD: '1'
+          PHOTO_DOWNLOAD: '0'
           OSM_GEOMETRY: '1'
           SWEDEN_OSM_URL: https://download.geofabrik.de/europe/sweden-latest.osm.pbf
         run: python -u scripts/build.py
-      - name: Save photo library for future builds
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: public/assets/photos
-          key: stockholm-photos-${{ github.run_id }}
-      - name: Attach photo audit even if a validation later fails
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: stockholm-photo-audit-${{ github.run_id }}
-          path: |
-            public/assets/photos/photo-health.json
-            public/assets/photos/catalog.json
-          if-no-files-found: warn
-          retention-days: 30
       - name: Validate full-network dataset before publishing
         run: |
           python - <<'PY'
@@ -110,23 +87,18 @@ jobs:
           if failures:
               raise SystemExit('STOP: browser-displayable coverage below floor: '+', '.join(failures))
           PY3
-      - name: Check photo availability and publish audit report
+      - name: Audit committed photos without blocking traffic deployment
         run: |
-          python - <<'PY2'
-          import json,pathlib
-          p=pathlib.Path('public/assets/photos/photo-health.json')
-          if not p.exists():
-              raise SystemExit('Photo health report missing')
-          report=json.loads(p.read_text())
-          print('PHOTOS:',report['downloaded'],'/',report['expected'])
-          print('MISSING PHOTO KEYS:',sorted(report['missing']))
-          # Do not publish an update without recognizable core Stockholm vehicles.
-          catalog=json.loads(pathlib.Path('public/assets/photos/catalog.json').read_text())
-          essential=['commuter_x60','rail_arlanda','rail_malartag','bus_red69']
-          missing=[k for k in essential if k not in catalog]
-          if missing:
-              raise SystemExit('STOP: essential vehicle photographs missing: '+', '.join(missing))
-          PY2
+          python -u scripts/local_photos.py
+          echo "Missing photos use a local vehicle illustration and do not stop the transit simulator."
+      - name: Save photo audit for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockholm-v10-local-photo-audit
+          path: public/assets/photos/photo-health.json
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
