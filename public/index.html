@@ -83,10 +83,10 @@ const layer=L.layerGroup().addTo(map),stationLayer=L.layerGroup().addTo(map);
 let net=null, schedules={},active=[],selected=null,follow=false,lastDate='',manifest=null,lastTick=0,shown=0,displayStopKey='',manualScrollUntil=0,photoCache=new Map(),displayCached=new Map(),pointsOnScreen=[];
 const enabled=new Set(MODES.map(m=>m[0]));
 for(const [mode,ico,label] of MODES){const b=document.createElement('button');b.className='filter'+(enabled.has(mode)?'':' off');b.dataset.mode=mode;b.innerHTML=`<span class="emoji">${ico}</span><span>${label}</span><span class="check">✓</span>`;b.onclick=()=>{if(enabled.has(mode)){enabled.delete(mode);b.classList.add('off')}else{enabled.add(mode);b.classList.remove('off')}drawDetail();};$('filters').append(b)}
-function stockholm(stamp=Date.now()){const arr=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Stockholm',year:'numeric',month:'2-digit',day:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(stamp));const p={};for(const a of arr)p[a.type]=a.value;return {date:`${p.year}-${p.month}-${p.day}`,seconds:Number(p.hour)*3600+Number(p.minute)*60+Number(p.second)+(stamp%1000)/1000,time:`${p.hour}:${p.minute}:${p.second}`}}
+function stockholm(stamp=Date.now()){const arr=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Stockholm',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(stamp));const p={};for(const a of arr)p[a.type]=a.value;return {date:`${p.year}-${p.month}-${p.day}`,seconds:Number(p.hour)*3600+Number(p.minute)*60+Number(p.second)+(stamp%1000)/1000,time:`${p.hour}:${p.minute}:${p.second}`}}
 let clockReference=null,clockReferenceMs=0;
-function sampleClock(){clockReference=stockholm();clockReferenceMs=performance.now();return clockReference}
-function animationClock(){if(!clockReference)return sampleClock();return {date:clockReference.date,seconds:clockReference.seconds+(performance.now()-clockReferenceMs)/1000,time:clockReference.time}}
+function sampleClock(){clockReference=stockholm();clockReferenceMs=performance.now();if(!Number.isFinite(clockReference.seconds))throw Error('Stockholm clock is invalid');return clockReference}
+function animationClock(){if(!clockReference)return sampleClock();const now=stockholm();if(now.date!==clockReference.date||Math.abs(now.seconds-clockReference.seconds-(performance.now()-clockReferenceMs)/1000)>3)return sampleClock();return {date:clockReference.date,seconds:clockReference.seconds+(performance.now()-clockReferenceMs)/1000,time:clockReference.time}}
 function secTxt(s){if(!Number.isFinite(s))return '–';return `${String(Math.floor(s/3600)%24).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}`}
 function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function distance(a,b){if(!a||!b)return 0;const R=6371000,rad=Math.PI/180,p1=a[0]*rad,p2=b[0]*rad,dp=(b[0]-a[0])*rad,dl=(b[1]-a[1])*rad;const v=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.atan2(Math.sqrt(v),Math.sqrt(1-v))}
@@ -280,9 +280,11 @@ function routeDraw(v,pg,rebuildStations=true){
  // Accurate mapped geometry is drawn above it when available.
  if(v.coords.length>=2){
   const idx=Math.max(0,Math.min(v.coords.length-1,pg.index));
-  const currentPos=pg.pos||v.coords[idx];
+  const currentPos=(Array.isArray(pg.pos)&&pg.pos.every(Number.isFinite))?pg.pos:v.coords[idx];
+  // Overview is always visible, even where precise OSM mapping is incomplete.
+  // The approximated connector is dashed and clearly distinguishable from mapped tracks.
   const past=v.coords.slice(0,idx).concat([currentPos]);
-  const future=[currentPos].concat(v.coords.slice(idx));
+  const future=[currentPos].concat(v.coords.slice(idx+1));
   // Preserve the full overview at the starting stop; the blue travelled portion grows naturally.
   const approxStyle={weight:3,opacity:.62,dashArray:'4 7',interactive:false,lineCap:'round'};
   if(!fallbackGrey){
