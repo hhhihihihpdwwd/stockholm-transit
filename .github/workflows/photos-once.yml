@@ -1,4 +1,4 @@
-name: Stockholm Transit - ONE TIME import and store vehicle photos
+name: Stockholm Transit V11 - Nur genehmigte Fotos importieren
 
 on:
   workflow_dispatch:
@@ -23,6 +23,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install photo resizing and corruption checks
+        run: python -m pip install --disable-pip-version-check Pillow
       - name: Fetch photos once and preserve previously saved photos
         run: |
           python -u scripts/fetch_photos.py
@@ -40,7 +42,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: stockholm-v10-photos-and-audit
+          name: stockholm-v11-photos-and-audit
           path: |
             public/assets/photos/
           retention-days: 30
